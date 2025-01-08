@@ -31,8 +31,10 @@ dat_group_mod_ord = dat_group_mod.groupby(by=["label_group"], as_index=False, so
     .sort_values('size', ascending=False)
 
 # Merge with grouped data and sort
-dat_merged = dat.merge(dat_group_mod.drop('size', axis=1), how='left', on='label_spe')
-dat_merged_summ = .groupby(by=["label_group", "loc_id"], as_index=False, sort=False) \
+dat_merged = dat.merge(dat_group_mod.drop('size', axis=1), how='left', on='label_spe') \
+    .query('label_group != "UNID"')
+dat_merged_summ = dat_merged.groupby(by=["label_group", "loc_id"], 
+                                     as_index=False, sort=False) \
     .size() \
     .sort_values(['label_group', 'size'], ascending=[True, False])
 # Make the column categorical for ordered plotting
@@ -71,3 +73,7 @@ best_loc = dat_locs[shannon_div.argmax()]
 
 # Filter out testloc
 dat_test = dat_merged.query(f'loc_id == "{best_loc}"')
+dat_test.groupby("label_group").size()
+
+# Data without test set
+dat_tt = dat_merged.query(f'loc_id != "{best_loc}"')
