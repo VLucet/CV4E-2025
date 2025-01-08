@@ -1,4 +1,6 @@
 data/
+.vscode/
+assignments/
 __pycache__/
 *.pyc
 *.pyo
