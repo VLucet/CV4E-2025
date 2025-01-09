@@ -38,7 +38,7 @@ dat_merged_summ = dat_merged.groupby(by=["label_group", "loc_id"],
     .size() \
     .sort_values(['label_group', 'size'], ascending=[True, False])
 # Make the column categorical for ordered plotting
-dat_merged_summ["label_group"] = pd.Categorical(dat_to_plot["label_group"], 
+dat_merged_summ["label_group"] = pd.Categorical(dat_merged_summ["label_group"], 
                                             categories=dat_group_mod_ord["label_group"])
 
 # Plot number of bboxes for each group
@@ -77,3 +77,25 @@ dat_test.groupby("label_group").size()
 
 # Data without test set
 dat_tt = dat_merged.query(f'loc_id != "{best_loc}"')
+
+from myutils.MDSplit import *
+
+dat_tt_tab = dat_tt.groupby(by=["label_group", "loc_id"], 
+                                     as_index=False, sort=False) \
+    .size() \
+    .sort_values(['label_group', 'size'], ascending=[True, False]) \
+    .pivot_table(index='label_group', columns='loc_id', 
+                                   values='size', aggfunc='sum') \
+    .reset_index() \
+    .set_index('label_group') \
+    .rename_axis(None, axis=1) \
+    .fillna(0)
+
+dat_tt_tab_dict = dat_tt_tab.to_dict()
+
+the_split = split_locations_into_train_val(dat_tt_tab_dict, 
+                               n_random_seeds=10000,
+                               target_val_fraction=0.1,
+                               category_to_max_allowable_error=None,                                   
+                               category_to_error_weight=None,
+                               default_max_allowable_error=0.1)
