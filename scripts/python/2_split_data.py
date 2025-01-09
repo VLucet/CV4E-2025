@@ -57,8 +57,8 @@ dat_val = dat_merged.query(f'loc_id in {the_split[0]}')
 # print(dat_train.head())
 # print(dat_val.head())
 
-dat_test.to_csv("data/split/dat_test.csv")
-dat_train.to_csv("data/split/dat_train.csv")
-dat_val.to_csv("data/split/dat_val.csv")
+dat_test.to_csv("data/split/dat_test.csv", index=False)
+dat_train.to_csv("data/split/dat_train.csv", index=False)
+dat_val.to_csv("data/split/dat_val.csv", index=False)
 
 print("Data is split.")
