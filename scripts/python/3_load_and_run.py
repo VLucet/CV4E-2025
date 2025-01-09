@@ -133,9 +133,9 @@ eval_dataloader = DataLoader(eval_dataset, batch_size=batch_size)
 
 if model_name in ["resnet50", "resnet101"]:
     if model_name == "resnet50":
-        model = models.resnet50(pretrained=True)
+        model = models.resnet50(weights='DEFAULT')
     elif model_name == "resnet101":
-        model = models.resnet101(pretrained=True)
+        model = models.resnet101(weights='DEFAULT')
     # state_dict = torch.load("models/resnet/pretrained/" + model_name + ".pth")
     
 # model.load_state_dict(state_dict)
@@ -295,7 +295,7 @@ if do_predict:
             preds_df = pd.DataFrame(
                 preds.detach().cpu().numpy(),
                 index=batch["image_id"].numpy(),
-                columns=species_labels
+                # columns=species_labels
             )
             preds_collector.append(preds_df)
 
