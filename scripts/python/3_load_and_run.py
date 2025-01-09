@@ -68,18 +68,6 @@ print(x_train.size, y_train.size, x_eval.size, y_eval.size)
 
 #############################################################
 
-# split_pcts_train = pd.DataFrame(
-#     {
-#         "train": y_train.idxmax(axis=1).value_counts(normalize=False),
-#         "eval": y_eval.idxmax(axis=1).value_counts(normalize=False),
-#         "train_pct": y_train.idxmax(axis=1).value_counts(normalize=True),
-#         "eval_pct": y_eval.idxmax(axis=1).value_counts(normalize=True),
-#     }
-# )
-# print(split_pcts_train)
-
-#############################################################
-
 class ImagesDataset(Dataset):
     """Reads in an image, transforms pixel values, and serves
     a dictionary containing the image id, image tensors, and label.
@@ -265,17 +253,17 @@ if do_train:
     plt.legend(loc=0)
     # plt.show()
     
-    plt.savefig("3_Classifiers/1_species_classifier/" + run_name + "loss.png")
+    plt.savefig("figures/" + run_name + "loss.png")
 
     print("TRAINING DONE")
 
-    torch.save(model, "3_Classifiers/1_species_classifier/" + run_name + "model.pth")
+    torch.save(model, "models/" + run_name + "model.pth")
 
     print("MODEL SAVED")
 
 else:
   
-    model = torch.load("3_Classifiers/1_species_classifier/" + run_name + "model.pth")
+    model = torch.load("models/" + run_name + "model.pth")
     
     print("MODEL LOADED")
 
@@ -313,7 +301,7 @@ if do_predict:
 
     eval_preds_df = pd.concat(preds_collector)
 
-    eval_preds_df.to_csv("3_Classifiers/1_species_classifier/" + run_name + "predictions.csv")
+    eval_preds_df.to_csv("outputs/" + run_name + "predictions.csv")
 
 # eval_preds_df = pd.read_csv("predictions.csv", index_col=0)
 
@@ -383,4 +371,4 @@ cm = ConfusionMatrixDisplay.from_predictions(
     colorbar=True,
 )
 
-fig.savefig("3_Classifiers/1_species_classifier/" + run_name + "cm.png")
+fig.savefig("figures/" + run_name + "cm.png")
