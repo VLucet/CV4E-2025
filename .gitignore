@@ -1,5 +1,7 @@
 data/
 data-raw/
+models/
+outputs/
 .vscode/
 assignments/
 figures/
