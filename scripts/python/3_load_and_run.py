@@ -27,7 +27,7 @@ dat_labs_lookup = pd.read_csv("data/tabular/labels_lookup.csv")
 
 number_of_categories = dat_merged.label_group.nunique()
 
-do_train = False
+do_train = True
 do_predict = True
 frozen = True
 # the_basepath = os.environ['DATASTORE']
@@ -51,8 +51,8 @@ print(run_name)
 #############################################################
 
 # Subsampling
-dat_train = dat_train.sample(frac=0.01)
-dat_val = dat_val.sample(frac=0.01)
+dat_train = dat_train.sample(frac=0.1)
+dat_val = dat_val.sample(frac=0.1)
 
 x_train = dat_train.crop_path
 x_eval = dat_val.crop_path
