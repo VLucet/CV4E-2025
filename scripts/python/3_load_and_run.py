@@ -29,14 +29,10 @@ number_of_categories = dat_merged.label_group.nunique()
 # dat_train.head()
 # dat_val.head()
 
-do_train = False
+do_train = True
 do_predict = True
 frozen = True
-replace_path = True
-if replace_path:
-  the_basepath = "/media/vlucet/T7ShieldSSD/trailcam"
-else:
-  the_basepath = None
+the_basepath = os.environ['DATASTORE']
 
 batch_size = 32
 epochs = 10
