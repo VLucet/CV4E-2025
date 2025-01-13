@@ -29,7 +29,7 @@ number_of_categories = dat_merged.label_group.nunique()
 # dat_train.head()
 # dat_val.head()
 
-do_train = True
+do_train = False
 do_predict = True
 frozen = True
 replace_path = True
@@ -317,7 +317,7 @@ print(eval_predictions.head())
 
 print("Predicted vs true labels (eval):")
 pred_vs_eval = eval_predictions.value_counts().to_frame().rename(
-    columns = {'count': 'predicted'}).merge(y_eval.idxmax(axis=1).value_counts().to_frame().rename(
+    columns = {'count': 'predicted'}).merge(y_eval.idxmax().value_counts().to_frame().rename(
         columns = {'count': 'real'}), left_index=True, right_index=True)
 print(pred_vs_eval)
 
