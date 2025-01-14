@@ -191,7 +191,7 @@ def validate(cfg, dataLoader, model):
     
     # don't calculate intermediate gradient steps: we don't need them, so this saves memory and is faster
     with torch.no_grad():            
-        for batch_n, batch in tqdm(enumerate(dataLoader), total=len(dataLoader)):
+        for batch_n, batch in enumerate(dataLoader):
 
             # put data and labels on device
             data, labels =  batch["image"].to(device), batch["label"].to(device)
