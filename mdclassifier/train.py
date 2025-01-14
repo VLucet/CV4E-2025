@@ -5,13 +5,13 @@ from dataset import MDclassDataset
 from model import CustomResnet101
 from torch import nn
 from util import init_seed
+from tqdm import trange
 
 import glob
 import torch
 import os
 import yaml
 import argparse
-import tqdm
 
 import torch.optim as optim
 import pandas as pd
@@ -111,13 +111,16 @@ def train(cfg, dataLoader, model, optimizer):
     # running averages
     # for now, we just log the loss and overall accuracy (OA)
     loss_total, oa_total = 0.0, 0.0
+        
+    # iterate over dataLoader
+    progressBar = trange(len(dataLoader))
 
     # iterate over dataLoader
     # see the last line of file "dataset.py" where we return the image tensor (data) and label
-    for batch_n, batch in tqdm(enumerate(dataLoader), total=len(dataLoader)):
+    for batch_n, batch in enumerate(dataLoader):
 
         # put data and labels on device
-        data, labels =  model(batch["image"]).to(device), batch["label"].to(device)
+        data, labels =  batch["image"].to(device), batch["label"].to(device)
 
         # forward pass
         prediction = model(data)
@@ -144,12 +147,16 @@ def train(cfg, dataLoader, model, optimizer):
         oa = torch.mean((pred_label == labels).float())
         oa_total += oa.item()
 
-        print(
+        progressBar.set_description(
             '[Train] Loss: {:.2f}; OA: {:.2f}%'.format(
                 loss_total/(batch_n+1),
                 100*oa_total/(batch_n+1)
             )
         )
+        progressBar.update(1)
+
+    # end of epoch; finalize
+    progressBar.close()
     
     # end of epoch; finalize
     # shorthand notation for: loss_total = loss_total / len(dataLoader)
@@ -179,12 +186,15 @@ def validate(cfg, dataLoader, model):
     # for now, we just log the loss and overall accuracy (OA)
     loss_total, oa_total = 0.0, 0.0
     
+    # iterate over dataLoader
+    progressBar = trange(len(dataLoader))
+    
     # don't calculate intermediate gradient steps: we don't need them, so this saves memory and is faster
     with torch.no_grad():            
         for batch_n, batch in tqdm(enumerate(dataLoader), total=len(dataLoader)):
 
             # put data and labels on device
-            data, labels =  model(batch["image"]).to(device), batch["label"].to(device)
+            data, labels =  batch["image"].to(device), batch["label"].to(device)
 
             # forward pass
             prediction = model(data)
@@ -199,12 +209,15 @@ def validate(cfg, dataLoader, model):
             oa = torch.mean((pred_label == labels).float())
             oa_total += oa.item()
 
-            print(
-                '[Val ] Loss: {:.2f}; OA: {:.2f}%'.format(
-                    loss_total/(batch_n+1),
-                    100*oa_total/(batch_n+1)
-                )
+        progressBar.set_description(
+            '[Val] Loss: {:.2f}; OA: {:.2f}%'.format(
+                loss_total/(batch_n+1),
+                100*oa_total/(batch_n+1)
             )
+        )
+        progressBar.update(1)
+
+    progressBar.close()
     
     # end of epoch; finalize
     loss_total /= len(dataLoader)

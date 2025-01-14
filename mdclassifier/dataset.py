@@ -43,7 +43,7 @@ class MDclassDataset(Dataset):
             image_path = os.path.join(self.basepath, image_path)
           
         image = Image.open(image_path).convert("RGB")
-        image = self.transform(image).to(self.device)
+        image = self.transform(image)
         image_id = self.data.index[index]
         
         # if we don't have labels (e.g. for test set) just return the image and image id
@@ -52,7 +52,7 @@ class MDclassDataset(Dataset):
         else:
             label = torch.tensor(
                 self.label.iloc[index], dtype=torch.long
-            ).to(self.device)
+            )
             sample = {"image_id": image_id, "image": image, "label": label}
         return sample
 

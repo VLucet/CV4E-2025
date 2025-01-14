@@ -26,7 +26,7 @@ class CustomResnet101(nn.Module):
         
         # add a set of layers
         self.classifier = nn.Sequential(
-            nn.Linear(in_features, 1024),  # dense layer takes a 2048-dim input and outputs 1024-dim
+            nn.Linear(in_features, 512),  # dense layer takes a 2048-dim input and outputs 1024-dim
             nn.ReLU(inplace=True),  # ReLU activation introduces non-linearity
             nn.Dropout(0.5),        # for regularization
             nn.Linear(
