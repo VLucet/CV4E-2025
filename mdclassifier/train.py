@@ -209,15 +209,15 @@ def validate(cfg, dataLoader, model):
             oa = torch.mean((pred_label == labels).float())
             oa_total += oa.item()
 
-        progressBar.set_description(
-            '[Val] Loss: {:.2f}; OA: {:.2f}%'.format(
-                loss_total/(batch_n+1),
-                100*oa_total/(batch_n+1)
+            progressBar.set_description(
+                '[Val] Loss: {:.2f}; OA: {:.2f}%'.format(
+                    loss_total/(batch_n+1),
+                    100*oa_total/(batch_n+1)
+                )
             )
-        )
-        progressBar.update(1)
+            progressBar.update(1)
 
-    progressBar.close()
+        progressBar.close()
     
     # end of epoch; finalize
     loss_total /= len(dataLoader)
