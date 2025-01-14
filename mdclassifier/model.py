@@ -21,7 +21,7 @@ class CustomResnet101(nn.Module):
         # ImageNet to a new one that outputs num_classes
         # number of input dimensions to last (classifier) layer
         in_features = self.feature_extractor.fc.in_features
-         # discard last layer...
+        # discard last layer...
         self.feature_extractor.fc = nn.Identity()
         
         # add a set of layers
