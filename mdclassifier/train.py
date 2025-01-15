@@ -284,8 +284,8 @@ def main():
     model_name = "resnet101"
     run_name = make_run_name(model_name, cfg)
 
-    dat_train = dat_train  # .sample(frac=0.01)
-    dat_val = dat_val  # .sample(frac=0.01)
+    dat_train = dat_train.sample(frac=0.5)
+    dat_val = dat_val.sample(frac=0.5)
 
     x_train = dat_train.crop_path
     x_eval = dat_val.crop_path
