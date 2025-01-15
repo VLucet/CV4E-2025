@@ -181,7 +181,6 @@ def validate(cfg, dataLoader, model):
     model.to(device)
 
     # put the model into evaluation mode
-    # see lines 103-106 above
     model.eval()
 
     # we still need a criterion to calculate the validation loss
@@ -251,7 +250,6 @@ def make_run_name(model_name, cfg):
 
 #############################################################
 
-
 def main():
 
     # Argument parser for command-line arguments:
@@ -279,7 +277,7 @@ def main():
     dat_merged = pd.read_csv("data/tabular/all_dat_merged.csv")
     dat_train = pd.read_csv("data/split/dat_train.csv")
     dat_val = pd.read_csv("data/split/dat_val.csv")
-    # dat_test = pd.read_csv("data/split/dat_test.csv")
+    dat_test = pd.read_csv("data/split/dat_test.csv")
     # dat_labs_lookup = pd.read_csv("data/tabular/labels_lookup.csv")
 
     number_of_categories = dat_merged.label_group.nunique()
@@ -291,8 +289,10 @@ def main():
 
     x_train = dat_train.crop_path
     x_eval = dat_val.crop_path
+    x_test = dat_test.crop_path
     y_train = dat_train.label_id
     y_eval = dat_val.label_id
+    y_test = dat_test.label_id
 
     # start wandb
     # start a new wandb run to track this script
@@ -308,6 +308,7 @@ def main():
     # initialize data loaders for training and validation set
     dl_train = create_dataloader(cfg, x_train, y_train, split="train", model=model_name)
     dl_val = create_dataloader(cfg, x_eval, y_eval, split="val", model=model_name)
+    dl_test = create_dataloader(cfg, x_test, y_test, split="test", model=model_name)
 
     # initialize model
     model, current_epoch = load_model(cfg, number_of_categories)
@@ -323,6 +324,7 @@ def main():
 
         loss_train, oa_train = train(cfg, dl_train, model, optim)
         loss_val, oa_val = validate(cfg, dl_val, model)
+        loss_test, oa_test = validate(cfg, dl_test,model)
 
         # log metrics to wandb
         wandb.log(
@@ -331,6 +333,8 @@ def main():
                 "oa_train": oa_train,
                 "loss_val": loss_val,
                 "oa_val": oa_val,
+                "loss_val": loss_test,
+                "oa_val": oa_test
             }
         )
 
@@ -340,12 +344,13 @@ def main():
             "loss_val": loss_val,
             "oa_train": oa_train,
             "oa_val": oa_val,
+            "loss_test": loss_test,
+            "oa_test": oa_test,
         }
         save_model(cfg, current_epoch, model, stats, run_name)
 
     # [optional] finish the wandb run, necessary in notebooks
     wandb.finish()
-
 
 #############################################################
 
