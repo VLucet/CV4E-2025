@@ -14,7 +14,9 @@ def init_seed(seed):
     """
     if seed is not None:
         random.seed(seed)
-        # numpy.random.seed(seed)       # we don't use NumPy in this code, but you would want to set its random number generator seed, too
+        # we don't use NumPy in this code, but you would want to set its 
+        # random number generator seed, too
+        # numpy.random.seed(seed)
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
         cudnn.benchmark = True

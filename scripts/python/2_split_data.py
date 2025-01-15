@@ -26,9 +26,13 @@ best_loc = dat_locs[shannon_div.argmax()]
 # Filter out testloc
 dat_test = dat_merged.query(f'loc_id == "{best_loc}"')
 dat_test.groupby("label_group").size()
+dat_test.to_csv("data/tabular/splits/all/dat_test.csv", index=False)
+
+##################################################################
 
 # Data without test set
 dat_tt = dat_merged.query(f'loc_id != "{best_loc}"')
+dat_tt.to_csv("data/tabular/splits/all/dat_train_val.csv", index=False)
 
 # Run the split
 dat_tt_tab = dat_tt.groupby(by=["label_group", "loc_id"], 
@@ -57,8 +61,7 @@ dat_val = dat_merged.query(f'loc_id in {the_split[0]}')
 # print(dat_train.head())
 # print(dat_val.head())
 
-dat_test.to_csv("data/split/dat_test.csv", index=False)
-dat_train.to_csv("data/split/dat_train.csv", index=False)
-dat_val.to_csv("data/split/dat_val.csv", index=False)
+dat_train.to_csv("data/tabular/splits/all/dat_train.csv", index=False)
+dat_val.to_csv("data/tabular/splits/all/dat_val.csv", index=False)
 
 print("Data is split.")

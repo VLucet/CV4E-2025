@@ -1,11 +1,13 @@
 # MAIN SCRIPT
 
+from skbio import diversity as sd
 from torch.utils.data import DataLoader
 from dataset import MDclassDataset
 from model import CustomResnet101
 from torch import nn
 from util import init_seed
 from tqdm import trange
+from myutils.MDSplit import *
 
 import glob
 import torch
@@ -13,9 +15,115 @@ import os
 import yaml
 import argparse
 import wandb
+import random
 
 import torch.optim as optim
 import pandas as pd
+
+#############################################################
+
+
+def split_test_train_val(all_dat, species_group_ord, split_name, write=True):
+
+    all_dat_summ = (
+        all_dat.groupby(by=["label_group", "loc_id"], as_index=False, sort=False)
+        .size()
+        .sort_values(["label_group", "size"], ascending=[True, False])
+    )
+
+    # Make the column categorical for ordering
+    all_dat_summ["label_group"] = pd.Categorical(
+        all_dat_summ["label_group"], categories=species_group_ord["label_group"]
+    )
+
+    # Count to get best loc
+    dat_pivot = (
+        all_dat_summ.pivot_table(
+            index="loc_id", columns="label_group", values="size", aggfunc="sum"
+        )
+        .reset_index()
+        .fillna(0)
+    )
+    dat_locs = dat_pivot["loc_id"]
+    counts_table = dat_pivot.drop(["loc_id"], axis=1)
+    counts_table = counts_table.rename_axis(None, axis=1)
+
+    # Compute shannon div
+    shannon_div = sd.alpha_diversity("shannon", counts_table)
+    best_loc = dat_locs[shannon_div.argmax()]
+
+    # Filter out testloc
+    dat_test = all_dat.query(f'loc_id == "{best_loc}"')
+    dat_train_val = all_dat.query(f'loc_id != "{best_loc}"')
+
+    if write:
+        dat_test.to_csv(f"data/tabular/splits/{split_name}/dat_test.csv", index=False)
+        dat_train_val.to_csv(
+            f"data/tabular/splits/{split_name}/dat_train_val.csv", index=False
+        )
+
+    return dat_test, dat_train_val
+
+
+def split_data(all_dat, species_group_ord, cfg, split_name, write=True):
+
+    print(f'Splitting data following name "{split_name}"')
+
+    if cfg["data_frac"] < 1.0:
+        all_dat = all_dat.sample(frac=cfg["data_frac"])
+
+    if os.path.exists(f"data/tabular/splits/{split_name}"):
+
+        dat_train = pd.read_csv(f"data/tabular/splits/{split_name}/dat_train.csv")
+        dat_val = pd.read_csv(f"data/tabular/splits/{split_name}/dat_val.csv")
+        dat_test = pd.read_csv(f"data/tabular/splits/{split_name}/dat_test.csv")
+
+    else:
+
+        os.makedirs(f"data/tabular/splits/{split_name}", exist_ok=True)
+
+        dat_test, dat_train_val = split_test_train_val(
+            all_dat, species_group_ord, split_name
+        )
+
+        # Run the split
+        dat_tt_tab_dict = (
+            dat_train_val.groupby(
+                by=["label_group", "loc_id"], as_index=False, sort=False
+            )
+            .size()
+            .sort_values(["label_group", "size"], ascending=[True, False])
+            .pivot_table(
+                index="label_group", columns="loc_id", values="size", aggfunc="sum"
+            )
+            .reset_index()
+            .set_index("label_group")
+            .rename_axis(None, axis=1)
+            .fillna(0)
+        ).to_dict()
+
+        the_split = split_locations_into_train_val(
+            dat_tt_tab_dict,
+            n_random_seeds=10000,
+            target_val_fraction=(cfg["train_val_split"]),
+            category_to_max_allowable_error=None,
+            category_to_error_weight=None,
+            default_max_allowable_error=0.15,
+        )
+
+        with open(f"data/tabular/splits/{split_name}/split.txt", "w") as f:
+            print(the_split, file=f)
+
+        dat_train = dat_train_val.query(f"loc_id not in {the_split[0]}")
+        dat_val = dat_train_val.query(f"loc_id in {the_split[0]}")
+
+        if write:
+            dat_train.to_csv(
+                f"data/tabular/splits/{split_name}/dat_train.csv", index=False
+            )
+            dat_val.to_csv(f"data/tabular/splits/{split_name}/dat_val.csv", index=False)
+
+    return dat_train, dat_val, dat_test
 
 
 def create_dataloader(cfg, x_df, y_df, split, model):
@@ -229,6 +337,13 @@ def validate(cfg, dataLoader, model):
     return loss_total, oa_total
 
 
+#############################################################
+
+
+def make_split_name(cfg):
+    return "frac" + str(cfg["data_frac"]) + "_" + "split" + str(cfg["train_val_split"])
+
+
 def make_run_name(model_name, cfg):
     run_name = (
         model_name
@@ -249,6 +364,7 @@ def make_run_name(model_name, cfg):
 
 
 #############################################################
+
 
 def main():
 
@@ -275,17 +391,12 @@ def main():
 
     # Load data
     dat_merged = pd.read_csv("data/tabular/all_dat_merged.csv")
-    dat_train = pd.read_csv("data/split/dat_train.csv")
-    dat_val = pd.read_csv("data/split/dat_val.csv")
-    dat_test = pd.read_csv("data/split/dat_test.csv")
+    species_group_ord = pd.read_csv("data/tabular/species_groups_ord.csv")
     # dat_labs_lookup = pd.read_csv("data/tabular/labels_lookup.csv")
 
-    number_of_categories = dat_merged.label_group.nunique()
-    model_name = "resnet101"
-    run_name = make_run_name(model_name, cfg)
-
-    dat_train = dat_train.sample(frac=0.5)
-    dat_val = dat_val.sample(frac=0.5)
+    # Split data
+    split_name = make_split_name(cfg)
+    dat_train, dat_val, dat_test = split_data(dat_merged, species_group_ord, cfg, split_name)
 
     x_train = dat_train.crop_path
     x_eval = dat_val.crop_path
@@ -294,6 +405,12 @@ def main():
     y_eval = dat_val.label_id
     y_test = dat_test.label_id
 
+    number_of_categories = pd.concat([dat_train, dat_val]).label_group.nunique()
+
+    # Make run_name
+    model_name = cfg["model_name"]
+    run_name = make_run_name(model_name, cfg) + "_" + split_name
+
     # start wandb
     # start a new wandb run to track this script
     wandb.init(
@@ -301,8 +418,8 @@ def main():
         project="cv4e-test",
         # track hyperparameters and run metadata
         config=cfg,
-        # notes
-        notes=run_name,
+        # name
+        name=run_name,
     )
 
     # initialize data loaders for training and validation set
@@ -324,7 +441,7 @@ def main():
 
         loss_train, oa_train = train(cfg, dl_train, model, optim)
         loss_val, oa_val = validate(cfg, dl_val, model)
-        loss_test, oa_test = validate(cfg, dl_test,model)
+        loss_test, oa_test = validate(cfg, dl_test, model)
 
         # log metrics to wandb
         wandb.log(
@@ -334,7 +451,7 @@ def main():
                 "loss_val": loss_val,
                 "oa_val": oa_val,
                 "loss_val": loss_test,
-                "oa_val": oa_test
+                "oa_val": oa_test,
             }
         )
 
@@ -351,6 +468,7 @@ def main():
 
     # [optional] finish the wandb run, necessary in notebooks
     wandb.finish()
+
 
 #############################################################
 
