@@ -69,7 +69,8 @@ def split_data(all_dat, species_group_ord, cfg, split_name, write=True):
 
     print(f'Splitting data following name "{split_name}"')
 
-    if cfg["data_frac"] < 1.0:
+    if cfg["data_frac"] != 1.0:
+        print("Subsampling data")
         all_dat = all_dat.sample(frac=cfg["data_frac"])
 
     if os.path.exists(f"data/tabular/splits/{split_name}"):
