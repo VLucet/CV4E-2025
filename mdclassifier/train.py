@@ -450,8 +450,8 @@ def main():
                 "oa_train": oa_train,
                 "loss_val": loss_val,
                 "oa_val": oa_val,
-                "loss_val": loss_test,
-                "oa_val": oa_test,
+                "loss_test": loss_test,
+                "oa_test": oa_test,
             }
         )
 
