@@ -4,3 +4,6 @@ __pycache__/
 *.pyc
 *.pyo
 .env
+wandb/
+model_states/
+model_states*/

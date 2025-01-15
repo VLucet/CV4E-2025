@@ -12,6 +12,7 @@ import torch
 import os
 import yaml
 import argparse
+import wandb
 
 import torch.optim as optim
 import pandas as pd
@@ -265,6 +266,15 @@ def main():
     x_eval = dat_val.crop_path
     y_train = dat_train.label_id
     y_eval = dat_val.label_id
+    
+    # start wandb
+    # start a new wandb run to track this script
+    wandb.init(
+        # set the wandb project where this run will be logged
+        project="cv4e-test",
+        # track hyperparameters and run metadata
+        config=cfg
+    )
 
     # initialize data loaders for training and validation set
     dl_train = create_dataloader(cfg, x_train, y_train, split='train', 
@@ -286,6 +296,10 @@ def main():
 
         loss_train, oa_train = train(cfg, dl_train, model, optim)
         loss_val, oa_val = validate(cfg, dl_val, model)
+        
+                # log metrics to wandb
+        wandb.log({"loss_train": loss_train, "oa_train": oa_train,
+                   "loss_val": loss_val, "oa_val": oa_val})
 
         # combine stats and save
         stats = {
@@ -295,6 +309,9 @@ def main():
             'oa_val': oa_val
         }
         save_model(cfg, current_epoch, model, stats)
+    
+    # [optional] finish the wandb run, necessary in notebooks
+    wandb.finish()
 
 #############################################################        
 
