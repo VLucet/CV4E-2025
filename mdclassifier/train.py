@@ -62,18 +62,18 @@ def load_model(cfg, number_of_categories):
     return model_instance, start_epoch
 
 
-def save_model(cfg, epoch, model, stats):
+def save_model(cfg, epoch, model, stats, run_name):
     # make sure save directory exists; create if not
-    os.makedirs('model_states', exist_ok=True)
+    os.makedirs(f'runs/{run_name}', exist_ok=True)
 
     # get model parameters and add to stats...
     stats['model'] = model.state_dict()
 
     # ...and save
-    torch.save(stats, open(f'model_states/{epoch}.pt', 'wb'))
+    torch.save(stats, open(f'runs/{run_name}/{epoch}.pt', 'wb'))
     
     # also save config file if not present
-    cfpath = 'model_states/config.yaml'
+    cfpath = f'runs/{run_name}/{run_name}_config.yaml'
     if not os.path.exists(cfpath):
         with open(cfpath, 'w') as f:
             yaml.dump(cfg, f)
@@ -226,6 +226,15 @@ def validate(cfg, dataLoader, model):
 
     return loss_total, oa_total
 
+
+def make_run_name(model_name, cfg):
+    run_name = model_name + "_" \
+        + str(cfg['num_epochs']) + 'e' + '_' \
+        + str(cfg['batch_size']) + 'bs' + '_' \
+        + str(cfg['learning_rate']) + 'lr' + '_' \
+        + str(cfg['weight_decay']) + 'wd'
+    return run_name
+
 #############################################################
 
 def main():
@@ -258,9 +267,10 @@ def main():
     
     number_of_categories = dat_merged.label_group.nunique()
     model_name = "resnet101"
+    run_name = make_run_name(model_name, cfg)
     
-    dat_train = dat_train.sample(frac=0.1)
-    dat_val = dat_val.sample(frac=0.1)
+    dat_train = dat_train.sample(frac=0.01)
+    dat_val = dat_val.sample(frac=0.01)
 
     x_train = dat_train.crop_path
     x_eval = dat_val.crop_path
@@ -273,7 +283,9 @@ def main():
         # set the wandb project where this run will be logged
         project="cv4e-test",
         # track hyperparameters and run metadata
-        config=cfg
+        config=cfg,
+        # notes
+        notes=run_name
     )
 
     # initialize data loaders for training and validation set
@@ -297,7 +309,7 @@ def main():
         loss_train, oa_train = train(cfg, dl_train, model, optim)
         loss_val, oa_val = validate(cfg, dl_val, model)
         
-                # log metrics to wandb
+        # log metrics to wandb
         wandb.log({"loss_train": loss_train, "oa_train": oa_train,
                    "loss_val": loss_val, "oa_val": oa_val})
 
@@ -308,7 +320,7 @@ def main():
             'oa_train': oa_train,
             'oa_val': oa_val
         }
-        save_model(cfg, current_epoch, model, stats)
+        save_model(cfg, current_epoch, model, stats, run_name)
     
     # [optional] finish the wandb run, necessary in notebooks
     wandb.finish()
