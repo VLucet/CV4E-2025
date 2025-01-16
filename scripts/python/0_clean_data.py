@@ -6,6 +6,11 @@ print('Cleaning data...')
 
 # Read in the annotation data
 dat = pd.read_csv("data-raw/tabular/bbox_data_crop_simple_all.csv")
+dat.shape
+# Downsample data
+dat = dat.query("conf >= 0.5")
+dat.shape
+
 # Extract metadata
 dat = dat.assign(meta_split = [x.split("_") for x in 
                                [os.path.basename(x) for x in dat.crop_path]])

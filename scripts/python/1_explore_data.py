@@ -28,10 +28,10 @@ myplot = gg.ggplot(dat_merged_summ) + gg.aes(x = "label_group", y = "size") + \
     gg.ylab("# of bboxes") + \
     gg.facet_wrap("~loc_id")
 # Save plot
-# myplot.save(filename="figures/loc_by_class.pdf", height=30, width=30, limitsize=False)
+myplot.save(filename="figures/loc_by_class.pdf", height=30, width=30, limitsize=False)
 # Add log scale
 myplot_log = myplot + gg.scale_y_log10()
 # Save plot again
-# myplot_log.save(filename="figures/loc_by_class_log.pdf", height=30, width=30, limitsize=False)
+myplot_log.save(filename="figures/loc_by_class_log.pdf", height=30, width=30, limitsize=False)
 
 print("Data explored.")

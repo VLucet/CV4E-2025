@@ -1,8 +1,11 @@
 # Libraries
 from skbio import diversity as sd
 import pandas as pd
-from myutils.MDSplit import *
 import random
+import sys
+sys.path.append('.')
+from myutils.MDSplit import *
+
 
 random.seed(77)
 
