@@ -436,7 +436,7 @@ def main():
     optim = setup_optimizer(cfg, model)
 
     # Tracking of los_val
-    loss_val_track = 1000
+    stop_track = 1000
 
     # we have everything now: data loaders, model, optimizer; let's do the epochs!
     numEpochs = cfg["num_epochs"]
@@ -472,8 +472,8 @@ def main():
             "oa_test": oa_test,
         }
 
-        if loss_val < loss_val_track:
-            loss_val_track = loss_val
+        if loss_train < stop_track:
+            stop_track = loss_train
             save_model(cfg, current_epoch, model, stats, run_name)
 
     # [optional] finish the wandb run, necessary in notebooks

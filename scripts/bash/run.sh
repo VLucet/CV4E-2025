@@ -2,4 +2,4 @@
 
 export PYTHONPATH=.
 
-python mdclassifier/train.py --config configs/resnet101.yaml
+python mdclassifier/train.py --config configs/resnet18.yaml

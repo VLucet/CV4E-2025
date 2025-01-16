@@ -18,7 +18,7 @@ class MDclassDataset(Dataset):
         self.data = x_df
         self.label = y_df
 
-        if model == "resnet101":
+        if model in ["resnet18", "resnet101"]:
             self.transform = transforms.Compose(
                 [
                     transforms.Resize(cfg["image_size"]),

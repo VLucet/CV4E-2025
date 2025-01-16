@@ -11,7 +11,7 @@ class CustomResnet101(nn.Module):
         """
         super(CustomResnet101, self).__init__()
 
-        self.feature_extractor = models.resnet101(
+        self.feature_extractor = models.resnet18(
             weights="DEFAULT"
         )  # use weights pre-trained on ImageNet
 
