@@ -182,9 +182,10 @@ def save_model(cfg, epoch, model, stats, run_name):
 
     # get model parameters and add to stats...
     stats["model"] = model.state_dict()
+    stats["epoch"] = epoch
 
     # ...and save
-    torch.save(stats, open(f"runs/{run_name}/{epoch}.pt", "wb"))
+    torch.save(stats, open(f"runs/{run_name}/best.pt", "wb"))
 
     # also save config file if not present
     cfpath = f"runs/{run_name}/{run_name}_config.yaml"
@@ -434,6 +435,9 @@ def main():
     # set up model optimizer
     optim = setup_optimizer(cfg, model)
 
+    # Tracking of los_val
+    loss_val_track = 1000
+
     # we have everything now: data loaders, model, optimizer; let's do the epochs!
     numEpochs = cfg["num_epochs"]
     while current_epoch < numEpochs:
@@ -443,6 +447,8 @@ def main():
         loss_train, oa_train = train(cfg, dl_train, model, optim)
         loss_val, oa_val = validate(cfg, dl_val, model)
         loss_test, oa_test = validate(cfg, dl_test, model)
+
+
 
         # log metrics to wandb
         wandb.log(
@@ -465,7 +471,10 @@ def main():
             "loss_test": loss_test,
             "oa_test": oa_test,
         }
-        save_model(cfg, current_epoch, model, stats, run_name)
+
+        if loss_val < loss_val_track:
+            loss_val_track = loss_val
+            save_model(cfg, current_epoch, model, stats, run_name)
 
     # [optional] finish the wandb run, necessary in notebooks
     wandb.finish()
