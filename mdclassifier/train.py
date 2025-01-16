@@ -109,7 +109,7 @@ def split_data(all_dat, species_group_ord, cfg, split_name, write=True):
             target_val_fraction=(cfg["train_val_split"]),
             category_to_max_allowable_error=None,
             category_to_error_weight=None,
-            default_max_allowable_error=0.15,
+            default_max_allowable_error=0.5,
         )
 
         with open(f"data/tabular/splits/{split_name}/split.txt", "w") as f:
