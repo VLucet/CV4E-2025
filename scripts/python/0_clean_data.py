@@ -40,9 +40,15 @@ dat_group_mod_ord.to_csv("data/tabular/species_groups_ord.csv",
 # Merge with grouped data and sort
 dat_merged = dat.merge(dat_group_mod.drop('size', axis=1), how='left', 
                        on='label_spe') \
-    .query('label_group != "UNID"')
-labels_lookup = pd.DataFrame({"label_group" : dat_merged.label_group.unique(), 
-                              "label_id" : range(len(dat_merged.label_group.unique()))})
+    .query('label_group != "UNID"') \
+    .query('label_group in ["NONE", "STAF", "CARI"]')
+
+labels_lookup = dat_merged.groupby(by=["label_group"], as_index=False, 
+                                          sort=False) \
+    .size() \
+    .sort_values('size', ascending=False)
+labels_lookup["label_id"] = range(len(labels_lookup))
+
 labels_lookup.to_csv("data/tabular/labels_lookup.csv", index=False)
 dat_merged = dat_merged.merge(labels_lookup, how="left", 
                               on='label_group')
@@ -52,3 +58,6 @@ dat_merged.to_csv("data/tabular/all_dat_merged.csv",
                          index=False)
 
 print("Data cleaned.")
+
+# labels_lookup = pd.DataFrame({"label_group" : dat_merged.label_group.unique(), 
+#                               "label_id" : range(len(dat_merged.label_group.unique()))})
