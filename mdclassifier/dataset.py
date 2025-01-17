@@ -1,7 +1,7 @@
 import os
 import torch
 from torch.utils.data import Dataset
-from torchvision import transforms
+from torchvision.transforms import v2
 from PIL import Image
 
 
@@ -19,11 +19,14 @@ class MDclassDataset(Dataset):
         self.label = y_df
 
         if model in ["resnet18", "resnet101"]:
-            self.transform = transforms.Compose(
+            self.transform = v2.Compose(
                 [
-                    transforms.Resize(cfg["image_size"]),
-                    transforms.ToTensor(),
-                    transforms.Normalize(
+                    v2.Resize(cfg["image_size"]),
+                    v2.ToTensor(),
+                    v2.RandomRotation(10),
+                    v2.RandomHorizontalFlip(0.5),
+                    # v2.GaussianNoise([0, 0.1]),
+                    v2.Normalize(
                         mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)
                     ),
                 ]

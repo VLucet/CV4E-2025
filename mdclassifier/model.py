@@ -26,17 +26,18 @@ class CustomResnet101(nn.Module):
         # discard last layer...
         self.feature_extractor.fc = nn.Identity()
 
+        self.classifier = nn.Linear(in_features, num_classes)           # ...and create a new one
         # add a set of layers
-        self.classifier = nn.Sequential(
-            nn.Linear(
-                in_features, 1024
-            ),  # dense layer takes a 2048-dim input and outputs 1024-dim
-            nn.ReLU(inplace=True),  # ReLU activation introduces non-linearity
-            nn.Dropout(0.3),  # for regularization
-            nn.Linear(
-                1024, num_classes
-            ),  # final dense layer outputs x-dim corresponding to our target classes
-        )
+        # self.classifier = nn.Sequential(
+        #     nn.Linear(
+        #         in_features, 1024
+        #     ),  # dense layer takes a 2048-dim input and outputs 1024-dim
+        #     nn.ReLU(inplace=True),  # ReLU activation introduces non-linearity
+        #     nn.Dropout(0.3),  # for regularization
+        #     nn.Linear(
+        #         1024, num_classes
+        #     ),  # final dense layer outputs x-dim corresponding to our target classes
+        # )
 
         for param in self.classifier.parameters():
             param.requires_grad = True
