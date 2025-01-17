@@ -3,7 +3,7 @@
 from skbio import diversity as sd
 from torch.utils.data import DataLoader
 from dataset import MDclassDataset
-from model import CustomResnet101
+from model import CustomResnet101, CustomResnet18
 from torch import nn
 from util import init_seed
 from tqdm import trange
@@ -127,13 +127,13 @@ def split_data(all_dat, species_group_ord, cfg, split_name, write=True):
     return dat_train, dat_val, dat_test
 
 
-def create_dataloader(cfg, x_df, y_df, split, model):
+def create_dataloader(cfg, x_df, y_df, model):
     """
     Loads a dataset according to the provided split and wraps it in a
     PyTorch DataLoader object.
     """
     # create an object instance of our CTDataset class
-    dataset_instance = MDclassDataset(cfg, x_df, y_df, split, model)
+    dataset_instance = MDclassDataset(cfg, x_df, y_df, model)
 
     dataLoader = DataLoader(
         dataset=dataset_instance,
@@ -149,29 +149,33 @@ def load_model(cfg, number_of_categories):
     """
     Creates a model instance and loads the latest model state weights.
     """
-    model_instance = CustomResnet101(number_of_categories)
+    if cfg["model_name"] == "resnet101":
+        model_instance = CustomResnet101(number_of_categories)
+    elif cfg["model_name"] == "resnet18":
+        model_instance = CustomResnet18(number_of_categories)
 
-    # load latest model state
-    model_states = glob.glob("model_states/*.pt")
+    # # load latest model state
+    # model_states = glob.glob("model_states/*.pt")
 
-    if len(model_states):
-        # at least one save state found; get latest
-        model_epochs = [
-            int(m.replace("model_states/", "").replace(".pt", "")) for m in model_states
-        ]
-        start_epoch = max(model_epochs)
+    # if len(model_states):
+    #     # at least one save state found; get latest
+    #     model_epochs = [
+    #         int(m.replace("model_states/", "").replace(".pt", "")) for m in model_states
+    #     ]
+    #     start_epoch = max(model_epochs)
 
-        # load state dict and apply weights to model
-        print(f"Resuming from epoch {start_epoch}")
-        state = torch.load(
-            open(f"model_states/{start_epoch}.pt", "rb"), map_location="cpu"
-        )
-        model_instance.load_state_dict(state["model"])
+    #     # load state dict and apply weights to model
+    #     print(f"Resuming from epoch {start_epoch}")
+    #     state = torch.load(
+    #         open(f"model_states/{start_epoch}.pt", "rb"), map_location="cpu"
+    #     )
+    #     model_instance.load_state_dict(state["model"])
 
-    else:
-        # no save state found; start anew
-        print("Starting new model")
-        start_epoch = 0
+    # else:
+
+    # no save state found; start anew
+    print("Starting new model")
+    start_epoch = 0
 
     return model_instance, start_epoch
 
@@ -425,9 +429,9 @@ def main():
     )
 
     # initialize data loaders for training and validation set
-    dl_train = create_dataloader(cfg, x_train, y_train, split="train", model=model_name)
-    dl_val = create_dataloader(cfg, x_eval, y_eval, split="val", model=model_name)
-    dl_test = create_dataloader(cfg, x_test, y_test, split="test", model=model_name)
+    dl_train = create_dataloader(cfg, x_train, y_train, model=model_name)
+    dl_val = create_dataloader(cfg, x_eval, y_eval, model=model_name)
+    dl_test = create_dataloader(cfg, x_test, y_test, model=model_name)
 
     # initialize model
     model, current_epoch = load_model(cfg, number_of_categories)
