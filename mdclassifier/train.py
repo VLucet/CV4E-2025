@@ -3,7 +3,7 @@
 from skbio import diversity as sd
 from torch.utils.data import DataLoader
 from dataset import MDclassDataset
-from model import CustomResnet101, CustomResnet18
+from model import CustomResnet18 # CustomResnet101
 from torch import nn
 from util import init_seed
 from tqdm import trange
@@ -127,7 +127,7 @@ def split_data(all_dat, species_group_ord, cfg, split_name, write=True):
     return dat_train, dat_val, dat_test
 
 
-def create_dataloader(cfg, x_df, y_df, model):
+def create_dataloader(cfg, x_df, y_df, model, shuffle=True):
     """
     Loads a dataset according to the provided split and wraps it in a
     PyTorch DataLoader object.
@@ -139,20 +139,20 @@ def create_dataloader(cfg, x_df, y_df, model):
         dataset=dataset_instance,
         batch_size=cfg["batch_size"],
         num_workers=cfg["num_workers"],
-        shuffle=True,
+        shuffle=shuffle,
     )
 
     return dataLoader
 
 
-def load_model(cfg, number_of_categories):
+def load_model(cfg, number_of_categories, freezed=False):
     """
     Creates a model instance and loads the latest model state weights.
     """
     if cfg["model_name"] == "resnet101":
-        model_instance = CustomResnet101(number_of_categories)
+        model_instance = CustomResnet101(number_of_categories, cfg, freezed=freezed)
     elif cfg["model_name"] == "resnet18":
-        model_instance = CustomResnet18(number_of_categories)
+        model_instance = CustomResnet18(number_of_categories, cfg, freezed=freezed)
 
     # # load latest model state
     # model_states = glob.glob("model_states/*.pt")
@@ -180,7 +180,7 @@ def load_model(cfg, number_of_categories):
     return model_instance, start_epoch
 
 
-def save_model(cfg, epoch, model, stats, run_name):
+def save_model(cfg, epoch, model, stats, run_name, last=False):
     # make sure save directory exists; create if not
     os.makedirs(f"runs/{run_name}", exist_ok=True)
 
@@ -189,7 +189,11 @@ def save_model(cfg, epoch, model, stats, run_name):
     stats["epoch"] = epoch
 
     # ...and save
-    torch.save(stats, open(f"runs/{run_name}/best.pt", "wb"))
+    if last:
+        torch.save(stats, open(f"runs/{run_name}/{epoch}.pt", "wb"))
+    else:
+        torch.save(stats, open(f"runs/{run_name}/best.pt", "wb"))
+    
 
     # also save config file if not present
     cfpath = f"runs/{run_name}/{run_name}_config.yaml"
@@ -430,16 +434,16 @@ def main():
 
     # initialize data loaders for training and validation set
     dl_train = create_dataloader(cfg, x_train, y_train, model=model_name)
-    dl_val = create_dataloader(cfg, x_eval, y_eval, model=model_name)
-    dl_test = create_dataloader(cfg, x_test, y_test, model=model_name)
+    dl_val = create_dataloader(cfg, x_eval, y_eval, model=model_name, shuffle=False)
+    dl_test = create_dataloader(cfg, x_test, y_test, model=model_name, shuffle=False)
 
     # initialize model
-    model, current_epoch = load_model(cfg, number_of_categories)
+    model, current_epoch = load_model(cfg, number_of_categories, freezed=False)
 
     # set up model optimizer
     optim = setup_optimizer(cfg, model)
 
-    # Tracking of los_val
+    # Tracking of loss_val
     stop_track = 1000
 
     # we have everything now: data loaders, model, optimizer; let's do the epochs!
@@ -451,8 +455,6 @@ def main():
         loss_train, oa_train = train(cfg, dl_train, model, optim)
         loss_val, oa_val = validate(cfg, dl_val, model)
         loss_test, oa_test = validate(cfg, dl_test, model)
-
-
 
         # log metrics to wandb
         wandb.log(
@@ -476,8 +478,10 @@ def main():
             "oa_test": oa_test,
         }
 
-        if loss_train < stop_track:
-            stop_track = loss_train
+        if loss_val < stop_track:
+            stop_track = loss_val
+            save_model(cfg, current_epoch, model, stats, run_name)
+        if current_epoch == numEpochs:
             save_model(cfg, current_epoch, model, stats, run_name)
 
     # [optional] finish the wandb run, necessary in notebooks

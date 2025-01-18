@@ -21,8 +21,9 @@ class MDclassDataset(Dataset):
             self.transform = v2.Compose(
                 [
                     v2.Resize(cfg["image_size"]),
-                    v2.ToTensor(),
-                    # v2.RandomRotation(10)
+                    v2.Compose([v2.ToImage(),
+                                v2.ToDtype(torch.float32, scale=True)]),
+                    # v2.RandomRotation(10),
                     # v2.RandomHorizontalFlip(0.5),
                     # v2.GaussianNoise([0, 0.1]),
                     v2.Normalize(
