@@ -40,8 +40,8 @@ dat_group_mod_ord.to_csv("data/tabular/species_groups_ord.csv",
 # Merge with grouped data and sort
 dat_merged = dat.merge(dat_group_mod.drop('size', axis=1), how='left', 
                        on='label_spe') \
-    .query('label_group != "UNID"') \
-    .query('label_group in ["NONE", "STAF", "CARI"]')
+    .query('label_group != "UNID"') #\
+    # .query('label_group in ["NONE", "STAF", "CARI"]')
 
 labels_lookup = dat_merged.groupby(by=["label_group"], as_index=False, 
                                           sort=False) \
