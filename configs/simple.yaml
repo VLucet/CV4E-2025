@@ -1,5 +1,5 @@
 program: mdclassifier/train.py
-name: major-sweep
+name: simple
 method: grid
 metric:
   goal: minimize
