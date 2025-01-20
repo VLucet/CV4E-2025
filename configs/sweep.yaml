@@ -5,15 +5,41 @@ metric:
   goal: minimize
   name: loss_val
 parameters:
+  wandb_project: 
+    value: "cv4e-sweep"
+  basepath: 
+    value: '/mnt/class_data/group4/val/trailcam/'
+  train_val_split: 
+    value: 0.3
+  data_frac: 
+    value: 0.5
+  seed: 
+    value: 32678456782 # random number generator seed (long integer value)
+  device: 
+    value: 'cuda' # if you have multiple GPU's, you can use 'cude:4' to specify which GPU to run on, e.g., the 4th
+  num_workers: 
+    value: 16  # number of CPU cores that load data in parallel. You can set this to the number of logical CPU cores that you have. 
+  model_name: 
+    value: 'resnet18'
+  freezed: 
+    value: False
+  image_size: 
+    value: 224
+  num_epochs:
+    values: [10, 20]
+  batch_size:
+    values: [64, 128]
   learning_rate:
     min: 0.00001
     max: 0.1
   weight_decay:
     min: 0.01
     max: 0.5
-  batch_size:
-    values: [32, 64, 128, 256]
-  epochs:
-    values: [100, 200]
   optimizer:
     values: ["sgd", "adam", "adamw"]
+  rotation:
+    min: 1
+    max: 45
+  horizontal_flip:
+    min: 0.1
+    max: 0.5

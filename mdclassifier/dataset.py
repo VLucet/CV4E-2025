@@ -20,7 +20,7 @@ class MDclassDataset(Dataset):
         if cfg["model_name"] in ["resnet18", "resnet101"]:
             self.transform = v2.Compose(
                 [
-                    v2.Resize(cfg["image_size"]),
+                    v2.Resize([cfg["image_size"], cfg["image_size"]]),
                     v2.Compose([v2.ToImage(),
                                 v2.ToDtype(torch.float32, scale=True)]),
                     v2.RandomRotation(cfg["rotation"]),

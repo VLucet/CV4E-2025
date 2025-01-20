@@ -371,20 +371,20 @@ def make_run_name(model_name, cfg):
 #############################################################
 
 
-def main():
+def main(cfg):
 
     # Argument parser for command-line arguments:
     # python ct_classifier/train.py --config configs/exp_resnet18.yaml
-    parser = argparse.ArgumentParser(description="Train deep learning model.")
-    parser.add_argument("--config", help="Path to config file")
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser(description="Train deep learning model.")
+    # parser.add_argument("--config", help="Path to config file")
+    # args = parser.parse_args()
 
     # load config
-    print(f'Using config "{args.config}"')
-    cfg = yaml.safe_load(open(args.config, "r"))
+    # print(f'Using config "{args.config}"')
+    # cfg = yaml.safe_load(open(args.config, "r"))
 
     # init random number generator seed (set at the start)
-    init_seed(cfg.get("seed", None))
+    init_seed(cfg["seed"])
 
     # check if GPU is available
     device = cfg["device"]
@@ -413,18 +413,18 @@ def main():
     number_of_categories = pd.concat([dat_train, dat_val]).label_group.nunique()
 
     # Make run_name
-    model_name = cfg["model_name"]
-    run_name = make_run_name(model_name, cfg) + "_" + split_name
+    # model_name = cfg["model_name"]
+    # run_name = make_run_name(model_name, cfg) + "_" + split_name
 
     # start wandb
     # start a new wandb run to track this script
     wandb.init(
         # set the wandb project where this run will be logged
-        project="cv4e-sweep",
+        project=cfg["wandb_project"],
         # track hyperparameters and run metadata
         config=cfg,
         # name
-        name=run_name,
+        # name=run_name,
     )
 
     # initialize data loaders for training and validation set
@@ -483,10 +483,35 @@ def main():
     wandb.finish()
 
 
+def parse_args():
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--wandb_project', type=str)
+    parser.add_argument('--basepath', type=str)
+    parser.add_argument('--train_val_split', type=float)
+    parser.add_argument('--data_frac', type=float)
+    parser.add_argument('--seed', type=int)
+    parser.add_argument('--device', type=str)
+    parser.add_argument('--num_workers', type=int)
+    parser.add_argument('--model_name', type=str)
+    parser.add_argument('--freezed', type=bool)
+    parser.add_argument('--image_size', type=int)
+    parser.add_argument('--num_epochs', type=int)
+    parser.add_argument('--batch_size', type=int)
+    parser.add_argument('--learning_rate', type=float)
+    parser.add_argument('--weight_decay', type=float)
+    parser.add_argument('--optimizer', type=str)
+    parser.add_argument('--rotation', type=int)
+    parser.add_argument('--horizontal_flip', type=float)
+
+    return vars(parser.parse_args())
+
+
 #############################################################
 
 
 if __name__ == "__main__":
     # This block only gets executed if you call the "train.py" script directly
     # (i.e., "python ct_classifier/train.py").
-    main()
+    cfg = parse_args()
+    main(cfg)
