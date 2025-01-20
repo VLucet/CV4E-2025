@@ -11,21 +11,20 @@ class MDclassDataset(Dataset):
     labels.
     """
 
-    def __init__(self, cfg, x_df, y_df, model, device="cuda"):
+    def __init__(self, cfg, x_df, y_df):
 
         self.basepath = cfg["basepath"]
         self.data = x_df
         self.label = y_df
 
-        if model in ["resnet18", "resnet101"]:
+        if cfg["model_name"] in ["resnet18", "resnet101"]:
             self.transform = v2.Compose(
                 [
                     v2.Resize(cfg["image_size"]),
                     v2.Compose([v2.ToImage(),
                                 v2.ToDtype(torch.float32, scale=True)]),
-                    # v2.RandomRotation(10),
-                    # v2.RandomHorizontalFlip(0.5),
-                    # v2.GaussianNoise([0, 0.1]),
+                    v2.RandomRotation(cfg["rotation"]),
+                    v2.RandomHorizontalFlip(cfg["horizontal_flip"]),
                     v2.Normalize(
                         mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)
                     ),
@@ -34,7 +33,7 @@ class MDclassDataset(Dataset):
         else:
             raise Exception("Model unknown")
 
-        self.device = device
+        self.device = cfg["device"]
 
     def __getitem__(self, index):
         """

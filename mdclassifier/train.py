@@ -3,7 +3,7 @@
 from skbio import diversity as sd
 from torch.utils.data import DataLoader
 from dataset import MDclassDataset
-from model import CustomResnet18 # CustomResnet101
+from model import CustomResnet
 from torch import nn
 from util import init_seed
 from tqdm import trange
@@ -127,13 +127,13 @@ def split_data(all_dat, species_group_ord, cfg, split_name, write=True):
     return dat_train, dat_val, dat_test
 
 
-def create_dataloader(cfg, x_df, y_df, model, shuffle=True):
+def create_dataloader(cfg, x_df, y_df, shuffle=True):
     """
     Loads a dataset according to the provided split and wraps it in a
     PyTorch DataLoader object.
     """
     # create an object instance of our CTDataset class
-    dataset_instance = MDclassDataset(cfg, x_df, y_df, model)
+    dataset_instance = MDclassDataset(cfg, x_df, y_df)
 
     dataLoader = DataLoader(
         dataset=dataset_instance,
@@ -145,33 +145,14 @@ def create_dataloader(cfg, x_df, y_df, model, shuffle=True):
     return dataLoader
 
 
-def load_model(cfg, number_of_categories, freezed=False):
+def load_model(cfg, number_of_categories):
     """
     Creates a model instance and loads the latest model state weights.
     """
-    if cfg["model_name"] == "resnet101":
-        model_instance = CustomResnet101(number_of_categories, cfg, freezed=freezed)
-    elif cfg["model_name"] == "resnet18":
-        model_instance = CustomResnet18(number_of_categories, cfg, freezed=freezed)
-
-    # # load latest model state
-    # model_states = glob.glob("model_states/*.pt")
-
-    # if len(model_states):
-    #     # at least one save state found; get latest
-    #     model_epochs = [
-    #         int(m.replace("model_states/", "").replace(".pt", "")) for m in model_states
-    #     ]
-    #     start_epoch = max(model_epochs)
-
-    #     # load state dict and apply weights to model
-    #     print(f"Resuming from epoch {start_epoch}")
-    #     state = torch.load(
-    #         open(f"model_states/{start_epoch}.pt", "rb"), map_location="cpu"
-    #     )
-    #     model_instance.load_state_dict(state["model"])
-
-    # else:
+    if cfg["model_name"] in ["resnet18", "resnet101"]:
+        model_instance = CustomResnet(number_of_categories, cfg)
+    else:
+        raise "Model class not found"
 
     # no save state found; start anew
     print("Starting new model")
@@ -194,7 +175,6 @@ def save_model(cfg, epoch, model, stats, run_name, last=False):
     else:
         torch.save(stats, open(f"runs/{run_name}/best.pt", "wb"))
     
-
     # also save config file if not present
     cfpath = f"runs/{run_name}/{run_name}_config.yaml"
     if not os.path.exists(cfpath):
@@ -207,9 +187,22 @@ def setup_optimizer(cfg, model):
     The optimizer is what applies the gradients to the parameters and makes
     the model learn on the dataset.
     """
-    optimizer = optim.Adam(
-        model.parameters(), lr=cfg["learning_rate"], weight_decay=cfg["weight_decay"]
-    )
+
+    if cfg["optimizer"] == "sgd":
+        optimizer = optim.SGD(
+            model.parameters(), lr=cfg["learning_rate"], weight_decay=cfg["weight_decay"]
+        )
+    elif cfg["optimizer"] == "adam":
+        optimizer = optim.Adam(
+                model.parameters(), lr=cfg["learning_rate"], weight_decay=cfg["weight_decay"]
+            )
+    elif cfg["optimizer"] == "adamw":
+        optimizer = optim.AdamW(
+                model.parameters(), lr=cfg["learning_rate"], weight_decay=cfg["weight_decay"]
+            )
+    else:
+        raise "Optimizer not found"
+    
     return optimizer
 
 
@@ -433,12 +426,12 @@ def main():
     )
 
     # initialize data loaders for training and validation set
-    dl_train = create_dataloader(cfg, x_train, y_train, model=model_name)
-    dl_val = create_dataloader(cfg, x_eval, y_eval, model=model_name, shuffle=False)
-    dl_test = create_dataloader(cfg, x_test, y_test, model=model_name, shuffle=False)
+    dl_train = create_dataloader(cfg, x_train, y_train)
+    dl_val = create_dataloader(cfg, x_eval, y_eval, shuffle=False)
+    dl_test = create_dataloader(cfg, x_test, y_test, shuffle=False)
 
     # initialize model
-    model, current_epoch = load_model(cfg, number_of_categories, freezed=False)
+    model, current_epoch = load_model(cfg, number_of_categories)
 
     # set up model optimizer
     optim = setup_optimizer(cfg, model)
@@ -489,6 +482,7 @@ def main():
 
 
 #############################################################
+
 
 if __name__ == "__main__":
     # This block only gets executed if you call the "train.py" script directly
