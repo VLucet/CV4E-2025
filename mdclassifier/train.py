@@ -1,5 +1,8 @@
 # MAIN SCRIPT
 
+import sys
+sys.path.append(".")
+
 from skbio import diversity as sd
 from torch.utils.data import DataLoader
 from dataset import MDclassDataset
@@ -14,12 +17,10 @@ import os
 import yaml
 import argparse
 import wandb
-import sys
 
 import torch.optim as optim
 import pandas as pd
 
-sys.path.append(".")
 
 #############################################################
 
@@ -162,25 +163,25 @@ def load_model(cfg, number_of_categories):
     return model_instance, start_epoch
 
 
-def save_model(cfg, epoch, model, stats, run_name, last=False):
-    # make sure save directory exists; create if not
-    os.makedirs(f"runs/{run_name}", exist_ok=True)
+# def save_model(cfg, epoch, model, stats, run_name, last=False):
+#     # make sure save directory exists; create if not
+#     os.makedirs(f"runs/{run_name}", exist_ok=True)
 
-    # get model parameters and add to stats...
-    stats["model"] = model.state_dict()
-    stats["epoch"] = epoch
+#     # get model parameters and add to stats...
+#     stats["model"] = model.state_dict()
+#     stats["epoch"] = epoch
 
-    # ...and save
-    if last:
-        torch.save(stats, open(f"runs/{run_name}/{epoch}.pt", "wb"))
-    else:
-        torch.save(stats, open(f"runs/{run_name}/best.pt", "wb"))
+#     # ...and save
+#     if last:
+#         torch.save(stats, open(f"runs/{run_name}/{epoch}.pt", "wb"))
+#     else:
+#         torch.save(stats, open(f"runs/{run_name}/best.pt", "wb"))
     
-    # also save config file if not present
-    cfpath = f"runs/{run_name}/{run_name}_config.yaml"
-    if not os.path.exists(cfpath):
-        with open(cfpath, "w") as f:
-            yaml.dump(cfg, f)
+#     # also save config file if not present
+#     cfpath = f"runs/{run_name}/{run_name}_config.yaml"
+#     if not os.path.exists(cfpath):
+#         with open(cfpath, "w") as f:
+#             yaml.dump(cfg, f)
 
 
 def setup_optimizer(cfg, model):
@@ -419,7 +420,7 @@ def main():
     # start a new wandb run to track this script
     wandb.init(
         # set the wandb project where this run will be logged
-        project="cv4e-test",
+        project="cv4e-sweep",
         # track hyperparameters and run metadata
         config=cfg,
         # name
@@ -438,7 +439,7 @@ def main():
     optim = setup_optimizer(cfg, model)
 
     # Tracking of loss_val
-    stop_track = 1000
+    # stop_track = 1000
 
     # we have everything now: data loaders, model, optimizer; let's do the epochs!
     numEpochs = cfg["num_epochs"]
@@ -472,11 +473,11 @@ def main():
             "oa_test": oa_test,
         }
 
-        if loss_val < stop_track:
-            stop_track = loss_val
-            save_model(cfg, current_epoch, model, stats, run_name)
-        if current_epoch == numEpochs:
-            save_model(cfg, current_epoch, model, stats, run_name)
+        # if loss_val < stop_track:
+        #     stop_track = loss_val
+        #     save_model(cfg, current_epoch, model, stats, run_name)
+        # if current_epoch == numEpochs:
+        #     save_model(cfg, current_epoch, model, stats, run_name)
 
     # [optional] finish the wandb run, necessary in notebooks
     wandb.finish()

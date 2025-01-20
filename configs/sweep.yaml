@@ -1,4 +1,4 @@
-program: train.py
+program: mdclassifier/train.py
 name: major-sweep
 method: bayes
 metric:
