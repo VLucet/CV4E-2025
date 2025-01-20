@@ -9,16 +9,17 @@ from util import init_seed
 from tqdm import trange
 from myutils.MDSplit import *
 
-import glob
 import torch
 import os
 import yaml
 import argparse
 import wandb
-import random
+import sys
 
 import torch.optim as optim
 import pandas as pd
+
+sys.path.append(".")
 
 #############################################################
 

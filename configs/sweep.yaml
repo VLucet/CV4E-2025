@@ -1,0 +1,19 @@
+program: train.py
+name: major-sweep
+method: bayes
+metric:
+  goal: minimize
+  name: loss_val
+parameters:
+  learning_rate:
+    min: 0.00001
+    max: 0.1
+  weight_decay:
+    min: 0.01
+    max: 0.5
+  batch_size:
+    values: [32, 64, 128, 256]
+  epochs:
+    values: [100, 200]
+  optimizer:
+    values: ["sgd", "adam", "adamw"]
