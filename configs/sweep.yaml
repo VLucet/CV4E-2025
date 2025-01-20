@@ -1,6 +1,6 @@
 program: mdclassifier/train.py
 name: major-sweep
-method: bayes
+method: grid
 metric:
   goal: minimize
   name: loss_val
@@ -12,13 +12,13 @@ parameters:
   train_val_split: 
     value: 0.3
   data_frac: 
-    value: 0.5
+    values: [0.5, 1]
   seed: 
     value: 32678456782 # random number generator seed (long integer value)
   device: 
     value: 'cuda' # if you have multiple GPU's, you can use 'cude:4' to specify which GPU to run on, e.g., the 4th
   num_workers: 
-    value: 16  # number of CPU cores that load data in parallel. You can set this to the number of logical CPU cores that you have. 
+    value: 64  # number of CPU cores that load data in parallel. You can set this to the number of logical CPU cores that you have. 
   model_name: 
     value: 'resnet18'
   freezed: 
@@ -26,20 +26,16 @@ parameters:
   image_size: 
     value: 224
   num_epochs:
-    values: [10, 20]
+    values: [10, 50, 100]
   batch_size:
-    values: [64, 128]
+    values: [32, 64, 128]
   learning_rate:
-    min: 0.00001
-    max: 0.1
+    values: [0.00001, 0.0001, 0.001, 0.01]
   weight_decay:
-    min: 0.01
-    max: 0.5
+    values: [0, 0.05, 0.01, 0.05, 0.1]
   optimizer:
     values: ["sgd", "adam", "adamw"]
   rotation:
-    min: 1
-    max: 45
+    values: [0, 15, 30, 45]
   horizontal_flip:
-    min: 0.1
-    max: 0.5
+    values: [0, 0.25, 0.5]
