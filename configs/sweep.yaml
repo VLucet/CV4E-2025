@@ -1,18 +1,18 @@
 program: mdclassifier/train.py
-name: minimal-sweep
+name: cv4e-sweep
 method: grid
 metric:
   goal: minimize
   name: loss_val
 parameters:
   wandb_project: 
-    value: "cv4e-sweep-jan20"
+    value: "cv4e-sweep-jan21"
   basepath: 
     value: '/mnt/class_data/group4/val/trailcam/'
   train_val_split: 
     value: 0.3
   data_frac: 
-    value: 0.25
+    value: 1
   seed: 
     value: 32678456782 # random number generator seed (long integer value)
   device: 
@@ -26,16 +26,16 @@ parameters:
   image_size: 
     value: 224
   num_epochs:
-    value: 50
+    value: 20
   batch_size:
-    values: [64, 128]
+    value: 256 
   learning_rate:
-    values: [0.00001, 0.0001, 0.001, 0.01]
+    values: [0.0001, 0.00001]
   weight_decay:
-    values: [0, 0.01, 0.05, 0.1]
+    values: [0, 0.1]
   optimizer:
-    values: ["sgd", "adam", "adamw"]
+    values: ["sgd", "adamw"]
   rotation:
-    values: [0, 25, 45]
+    values: [0, 30]
   horizontal_flip:
-    values: [0, 0.25, 0.5]
+    values: [0, 0.3]

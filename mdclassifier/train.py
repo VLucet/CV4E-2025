@@ -376,18 +376,18 @@ def validate(cfg, dataLoader, model, number_of_categories):
 def compute_metrics(preds_total, labels_total, number_of_categories, device):
 
     # Species specific
-    acc_tm = torchmetrics.classification.Accuracy(task="multiclass", 
+    acc_tm = torchmetrics.classification.Accuracy(task="binary", 
                                                   num_classes=number_of_categories).to(device)
-    rec_tm = torchmetrics.classification.Recall(task="multiclass", 
+    rec_tm = torchmetrics.classification.Recall(task="binary", 
                                                 num_classes=number_of_categories).to(device)
-    pre_tm = torchmetrics.classification.Precision(task="multiclass", 
+    pre_tm = torchmetrics.classification.Precision(task="binary", 
                                                    num_classes=number_of_categories).to(device)
     dict_metrics = {}
     for cls in range(number_of_categories):
         preds_bin = torch.eq(preds_total, cls)
         labels_bin = torch.eq(labels_total, cls)
         dict_metrics[cls] = { 
-            "tm_acc": acc_tm(preds_bin, labels_bin),
+            "acc_tm": acc_tm(preds_bin, labels_bin),
             "rec_tm": rec_tm(preds_bin, labels_bin),
             "pre_tm": pre_tm(preds_bin, labels_bin),
         }
@@ -519,6 +519,9 @@ def main(cfg):
                                                                 number_of_categories)
         loss_test, oa_test, dict_metrics_test, cfm_test  = validate(cfg, dl_test, model, 
                                                                     number_of_categories)
+        
+        # print(f"{dict_metrics_train=}")
+        # print(f"{dict_metrics_train=}")
         
         # log metrics to wandb
         wandb.log({
