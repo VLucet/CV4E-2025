@@ -12,7 +12,7 @@ parameters:
   train_val_split: 
     value: 0.3
   data_frac: 
-    values: [0.5, 1]
+    value: 0.25
   seed: 
     value: 32678456782 # random number generator seed (long integer value)
   device: 
@@ -26,16 +26,16 @@ parameters:
   image_size: 
     value: 224
   num_epochs:
-    values: [10, 50, 100]
+    value: 50
   batch_size:
-    values: [32, 64, 128]
+    values: [64, 128]
   learning_rate:
     values: [0.00001, 0.0001, 0.001, 0.01]
   weight_decay:
-    values: [0, 0.05, 0.01, 0.05, 0.1]
+    values: [0, 0.01, 0.05, 0.1]
   optimizer:
     values: ["sgd", "adam", "adamw"]
   rotation:
-    values: [0, 15, 30, 45]
+    values: [0, 25, 45]
   horizontal_flip:
     values: [0, 0.25, 0.5]
