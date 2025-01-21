@@ -8,6 +8,9 @@ from myutils.MDSplit import *
 
 random.seed(77)
 
+frac = 0.3
+split_name = f"frac1.0_split{frac}"
+
 print("Splitting data...")
 
 dat_merged = pd.read_csv("data/tabular/all_dat_merged.csv")
@@ -28,13 +31,13 @@ best_loc = dat_locs[shannon_div.argmax()]
 # Filter out testloc
 dat_test = dat_merged.query(f'loc_id == "{best_loc}"')
 dat_test.groupby("label_group").size()
-dat_test.to_csv("data/tabular/splits/all/dat_test.csv", index=False)
+dat_test.to_csv(f"data/tabular/splits/{split_name}/dat_test.csv", index=False)
 
 ##################################################################
 
 # Data without test set
 dat_tt = dat_merged.query(f'loc_id != "{best_loc}"')
-dat_tt.to_csv("data/tabular/splits/all/dat_train_val.csv", index=False)
+dat_tt.to_csv(f"data/tabular/splits/{split_name}/dat_train_val.csv", index=False)
 
 # Run the split
 dat_tt_tab = dat_tt.groupby(by=["label_group", "loc_id"], 
@@ -52,7 +55,7 @@ dat_tt_tab_dict = dat_tt_tab.to_dict()
 
 the_split = split_locations_into_train_val(dat_tt_tab_dict, 
                                n_random_seeds=10000,
-                               target_val_fraction=0.12,
+                               target_val_fraction=frac,
                                category_to_max_allowable_error=None,                                   
                                category_to_error_weight=None,
                                default_max_allowable_error=0.1)
@@ -63,7 +66,7 @@ dat_val = dat_merged.query(f'loc_id in {the_split[0]}')
 # print(dat_train.head())
 # print(dat_val.head())
 
-dat_train.to_csv("data/tabular/splits/all/dat_train.csv", index=False)
-dat_val.to_csv("data/tabular/splits/all/dat_val.csv", index=False)
+dat_train.to_csv(f"data/tabular/splits/{split_name}/dat_train.csv", index=False)
+dat_val.to_csv(f"data/tabular/splits/{split_name}/dat_val.csv", index=False)
 
 print("Data is split.")
