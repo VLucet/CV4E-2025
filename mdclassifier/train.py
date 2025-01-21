@@ -14,9 +14,10 @@ from myutils.MDSplit import *
 
 import torch
 import os
-import yaml
+# import yaml
 import argparse
 import wandb
+import torchmetrics
 
 import torch.optim as optim
 import pandas as pd
@@ -208,7 +209,7 @@ def setup_optimizer(cfg, model):
     return optimizer
 
 
-def train(cfg, dataLoader, model, optimizer):
+def train(cfg, dataLoader, model, optimizer, number_of_categories):
     """
     Our actual training function.
     """
@@ -233,6 +234,10 @@ def train(cfg, dataLoader, model, optimizer):
 
     # iterate over dataLoader
     progressBar = trange(len(dataLoader))
+
+    # Preds and labels     
+    preds_total = []
+    labels_total = []
 
     # iterate over dataLoader
     # see the last line of file "dataset.py" where we return the image tensor (data) and label
@@ -266,6 +271,10 @@ def train(cfg, dataLoader, model, optimizer):
         oa = torch.mean((pred_label == labels).float())
         oa_total += oa.item()
 
+        # Accumulate
+        preds_total.append(pred_label)
+        labels_total.append(labels)
+
         progressBar.set_description(
             "[Train] Loss: {:.2f}; OA: {:.2f}%".format(
                 loss_total / (batch_n + 1), 100 * oa_total / (batch_n + 1)
@@ -281,10 +290,16 @@ def train(cfg, dataLoader, model, optimizer):
     loss_total /= len(dataLoader)
     oa_total /= len(dataLoader)
 
-    return loss_total, oa_total
+    # metrics calculations
+    preds_total = torch.concat(preds_total)
+    labels_total = torch.concat(labels_total)
+
+    dict_metrics, cfm_fig = compute_metrics(preds_total, labels_total, number_of_categories, device)
+
+    return loss_total, oa_total, dict_metrics, cfm_fig
 
 
-def validate(cfg, dataLoader, model):
+def validate(cfg, dataLoader, model, number_of_categories):
     """
     Validation function. Note that this looks almost the same as the training
     function, except that we don't use any optimizer or gradient steps.
@@ -306,6 +321,10 @@ def validate(cfg, dataLoader, model):
     # iterate over dataLoader
     progressBar = trange(len(dataLoader))
 
+    # Preds and labels     
+    preds_total = []
+    labels_total = []
+
     # don't calculate intermediate gradient steps: we don't need them, so this saves memory and is faster
     with torch.no_grad():
         for batch_n, batch in enumerate(dataLoader):
@@ -326,6 +345,10 @@ def validate(cfg, dataLoader, model):
             oa = torch.mean((pred_label == labels).float())
             oa_total += oa.item()
 
+            # Accumulate
+            preds_total.append(pred_label)
+            labels_total.append(labels)
+
             progressBar.set_description(
                 "[Val] Loss: {:.2f}; OA: {:.2f}%".format(
                     loss_total / (batch_n + 1), 100 * oa_total / (batch_n + 1)
@@ -339,7 +362,42 @@ def validate(cfg, dataLoader, model):
     loss_total /= len(dataLoader)
     oa_total /= len(dataLoader)
 
-    return loss_total, oa_total
+    # metrics calculations
+    preds_total = torch.concat(preds_total)
+    labels_total = torch.concat(labels_total)
+
+    dict_metrics, cfm_fig = compute_metrics(preds_total, labels_total, number_of_categories, device)
+
+    return loss_total, oa_total, dict_metrics, cfm_fig
+
+
+def compute_metrics(preds_total, labels_total, number_of_categories, device):
+
+    # Species specific
+    acc_tm = torchmetrics.classification.Accuracy(task="multiclass", 
+                                                  num_classes=number_of_categories).to(device)
+    rec_tm = torchmetrics.classification.Recall(task="multiclass", 
+                                                num_classes=number_of_categories).to(device)
+    pre_tm = torchmetrics.classification.Precision(task="multiclass", 
+                                                   num_classes=number_of_categories).to(device)
+    dict_metrics = {}
+    for cls in range(number_of_categories):
+        preds_bin = torch.eq(preds_total, cls)
+        labels_bin = torch.eq(labels_total, cls)
+        dict_metrics[cls] = { 
+            "tm_acc": acc_tm(preds_bin, labels_bin),
+            "rec_tm": rec_tm(preds_bin, labels_bin),
+            "pre_tm": pre_tm(preds_bin, labels_bin),
+        }
+
+    # Confusion matrix
+    cfm = torchmetrics.classification.MulticlassConfusionMatrix(
+        num_classes=number_of_categories, normalize="true").to(device)
+    cfm.update(preds_total, labels_total)
+    cfm_fig = cfm.plot()[0]
+    cfm_fig.set_size_inches(8,8)
+
+    return dict_metrics, cfm_fig
 
 
 #############################################################
@@ -349,23 +407,23 @@ def make_split_name(cfg):
     return "frac" + str(cfg["data_frac"]) + "_" + "split" + str(cfg["train_val_split"])
 
 
-def make_run_name(model_name, cfg):
-    run_name = (
-        model_name
-        + "_"
-        + str(cfg["num_epochs"])
-        + "e"
-        + "_"
-        + str(cfg["batch_size"])
-        + "bs"
-        + "_"
-        + str(cfg["learning_rate"])
-        + "lr"
-        + "_"
-        + str(cfg["weight_decay"])
-        + "wd"
-    )
-    return run_name
+# def make_run_name(model_name, cfg):
+#     run_name = (
+#         model_name
+#         + "_"
+#         + str(cfg["num_epochs"])
+#         + "e"
+#         + "_"
+#         + str(cfg["batch_size"])
+#         + "bs"
+#         + "_"
+#         + str(cfg["learning_rate"])
+#         + "lr"
+#         + "_"
+#         + str(cfg["weight_decay"])
+#         + "wd"
+#     )
+#     return run_name
 
 
 #############################################################
@@ -397,8 +455,11 @@ def main(cfg):
     # Load data
     dat_merged = pd.read_csv("data/tabular/all_dat_merged.csv")
     species_group_ord = pd.read_csv("data/tabular/species_groups_ord.csv")
-    # dat_labs_lookup = pd.read_csv("data/tabular/labels_lookup.csv")
-
+    dat_labs_lookup = pd.read_csv("data/tabular/labels_lookup.csv")\
+        .drop("size", axis = 1) \
+        .set_index("label_id") \
+        .to_dict()['label_group']
+    
     # Split data
     split_name = make_split_name(cfg)
     dat_train, dat_val, dat_test = split_data(dat_merged, species_group_ord, cfg, split_name)
@@ -410,7 +471,7 @@ def main(cfg):
     y_eval = dat_val.label_id
     y_test = dat_test.label_id
 
-    number_of_categories = pd.concat([dat_train, dat_val]).label_group.nunique()
+    number_of_categories = len(dat_labs_lookup)
 
     # Make run_name
     # model_name = cfg["model_name"]
@@ -447,31 +508,30 @@ def main(cfg):
         current_epoch += 1
         print(f"Epoch {current_epoch}/{numEpochs}")
 
-        loss_train, oa_train = train(cfg, dl_train, model, optim)
-        loss_val, oa_val = validate(cfg, dl_val, model)
-        loss_test, oa_test = validate(cfg, dl_test, model)
-
+        loss_train, oa_train, dict_metrics_train, cfm_train = train(cfg, dl_train, model, 
+                                                                    optim, number_of_categories)
+        loss_val, oa_val, dict_metrics_val, cfm_val  = validate(cfg, dl_val, model, 
+                                                                number_of_categories)
+        loss_test, oa_test, dict_metrics_test, cfm_test  = validate(cfg, dl_test, model, 
+                                                                    number_of_categories)
+        
         # log metrics to wandb
-        wandb.log(
-            {
+        wandb.log({
                 "loss_train": loss_train,
                 "oa_train": oa_train,
                 "loss_val": loss_val,
                 "oa_val": oa_val,
                 "loss_test": loss_test,
                 "oa_test": oa_test,
-            }
-        )
+                "train": {dat_labs_lookup[key]: value for key, value in dict_metrics_train.items()},
+                "val": {dat_labs_lookup[key]: value for key, value in dict_metrics_val.items()},
+                "test": {dat_labs_lookup[key]: value for key, value in dict_metrics_test.items()},
+                "cfm_train": wandb.Image(cfm_train),
+                "cfm_val": wandb.Image(cfm_val),
+                "cfm_test": wandb.Image(cfm_test)
+            })
 
         # combine stats and save
-        stats = {
-            "loss_train": loss_train,
-            "loss_val": loss_val,
-            "oa_train": oa_train,
-            "oa_val": oa_val,
-            "loss_test": loss_test,
-            "oa_test": oa_test,
-        }
 
         # if loss_val < stop_track:
         #     stop_track = loss_val

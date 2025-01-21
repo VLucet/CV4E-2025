@@ -18,7 +18,7 @@ parameters:
   device: 
     value: 'cuda' # if you have multiple GPU's, you can use 'cude:4' to specify which GPU to run on, e.g., the 4th
   num_workers: 
-    value: 64  # number of CPU cores that load data in parallel. You can set this to the number of logical CPU cores that you have. 
+    value: 32  # number of CPU cores that load data in parallel. You can set this to the number of logical CPU cores that you have. 
   model_name: 
     value: 'resnet18'
   freezed: 
