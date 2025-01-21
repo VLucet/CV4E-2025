@@ -36,6 +36,6 @@ parameters:
   optimizer:
     values: ["sgd", "adamw"]
   rotation:
-    values: 0
+    value: 0
   horizontal_flip:
-    values: 0
+    value: 0
