@@ -26,16 +26,16 @@ parameters:
   image_size: 
     value: 224
   num_epochs:
-    value: 20
+    value: 200
   batch_size:
     value: 256 
   learning_rate:
-    values: [0.0001, 0.00001]
+    values: [0.0001, 0.001]
   weight_decay:
-    values: [0, 0.1]
+    value: 0
   optimizer:
     values: ["sgd", "adamw"]
   rotation:
-    values: [0, 30]
+    values: 0
   horizontal_flip:
-    values: [0, 0.3]
+    values: 0
