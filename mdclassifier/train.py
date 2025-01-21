@@ -1,24 +1,28 @@
 # MAIN SCRIPT
 
+import sys
+sys.path.append(".")
+
 from skbio import diversity as sd
 from torch.utils.data import DataLoader
 from dataset import MDclassDataset
-from model import CustomResnet101
+from model import CustomResnet
 from torch import nn
 from util import init_seed
 from tqdm import trange
 from myutils.MDSplit import *
 
-import glob
 import torch
 import os
 import yaml
 import argparse
 import wandb
-import random
+import torchmetrics
+import datetime
 
 import torch.optim as optim
 import pandas as pd
+
 
 #############################################################
 
@@ -127,19 +131,19 @@ def split_data(all_dat, species_group_ord, cfg, split_name, write=True):
     return dat_train, dat_val, dat_test
 
 
-def create_dataloader(cfg, x_df, y_df, split, model):
+def create_dataloader(cfg, x_df, y_df, shuffle=True):
     """
     Loads a dataset according to the provided split and wraps it in a
     PyTorch DataLoader object.
     """
     # create an object instance of our CTDataset class
-    dataset_instance = MDclassDataset(cfg, x_df, y_df, split, model)
+    dataset_instance = MDclassDataset(cfg, x_df, y_df)
 
     dataLoader = DataLoader(
         dataset=dataset_instance,
         batch_size=cfg["batch_size"],
         num_workers=cfg["num_workers"],
-        shuffle=True,
+        shuffle=shuffle,
     )
 
     return dataLoader
@@ -149,44 +153,33 @@ def load_model(cfg, number_of_categories):
     """
     Creates a model instance and loads the latest model state weights.
     """
-    model_instance = CustomResnet101(number_of_categories)
-
-    # load latest model state
-    model_states = glob.glob("model_states/*.pt")
-
-    if len(model_states):
-        # at least one save state found; get latest
-        model_epochs = [
-            int(m.replace("model_states/", "").replace(".pt", "")) for m in model_states
-        ]
-        start_epoch = max(model_epochs)
-
-        # load state dict and apply weights to model
-        print(f"Resuming from epoch {start_epoch}")
-        state = torch.load(
-            open(f"model_states/{start_epoch}.pt", "rb"), map_location="cpu"
-        )
-        model_instance.load_state_dict(state["model"])
-
+    if cfg["model_name"] in ["resnet18", "resnet101"]:
+        model_instance = CustomResnet(number_of_categories, cfg)
     else:
-        # no save state found; start anew
-        print("Starting new model")
-        start_epoch = 0
+        raise "Model class not found"
+
+    # no save state found; start anew
+    print("Starting new model")
+    start_epoch = 0
 
     return model_instance, start_epoch
 
 
-def save_model(cfg, epoch, model, stats, run_name):
+def save_model(cfg, epoch, model, run_name, last=False):
     # make sure save directory exists; create if not
     os.makedirs(f"runs/{run_name}", exist_ok=True)
 
-    # get model parameters and add to stats...
-    stats["model"] = model.state_dict()
-    stats["epoch"] = epoch
+    # get model parameters and save
+    output = {}
+    output["model"] = model.state_dict()
+    output["epoch"] = epoch
 
     # ...and save
-    torch.save(stats, open(f"runs/{run_name}/best.pt", "wb"))
-
+    if last:
+        torch.save(output, open(f"runs/{run_name}/{epoch}.pt", "wb"))
+    else:
+        torch.save(output, open(f"runs/{run_name}/best.pt", "wb"))
+    
     # also save config file if not present
     cfpath = f"runs/{run_name}/{run_name}_config.yaml"
     if not os.path.exists(cfpath):
@@ -199,13 +192,26 @@ def setup_optimizer(cfg, model):
     The optimizer is what applies the gradients to the parameters and makes
     the model learn on the dataset.
     """
-    optimizer = optim.Adam(
-        model.parameters(), lr=cfg["learning_rate"], weight_decay=cfg["weight_decay"]
-    )
+
+    if cfg["optimizer"] == "sgd":
+        optimizer = optim.SGD(
+            model.parameters(), lr=cfg["learning_rate"], weight_decay=cfg["weight_decay"]
+        )
+    elif cfg["optimizer"] == "adam":
+        optimizer = optim.Adam(
+                model.parameters(), lr=cfg["learning_rate"], weight_decay=cfg["weight_decay"]
+            )
+    elif cfg["optimizer"] == "adamw":
+        optimizer = optim.AdamW(
+                model.parameters(), lr=cfg["learning_rate"], weight_decay=cfg["weight_decay"]
+            )
+    else:
+        raise "Optimizer not found"
+    
     return optimizer
 
 
-def train(cfg, dataLoader, model, optimizer):
+def train(cfg, dataLoader, model, optimizer, number_of_categories):
     """
     Our actual training function.
     """
@@ -230,6 +236,10 @@ def train(cfg, dataLoader, model, optimizer):
 
     # iterate over dataLoader
     progressBar = trange(len(dataLoader))
+
+    # Preds and labels     
+    preds_total = []
+    labels_total = []
 
     # iterate over dataLoader
     # see the last line of file "dataset.py" where we return the image tensor (data) and label
@@ -263,6 +273,10 @@ def train(cfg, dataLoader, model, optimizer):
         oa = torch.mean((pred_label == labels).float())
         oa_total += oa.item()
 
+        # Accumulate
+        preds_total.append(pred_label)
+        labels_total.append(labels)
+
         progressBar.set_description(
             "[Train] Loss: {:.2f}; OA: {:.2f}%".format(
                 loss_total / (batch_n + 1), 100 * oa_total / (batch_n + 1)
@@ -278,10 +292,16 @@ def train(cfg, dataLoader, model, optimizer):
     loss_total /= len(dataLoader)
     oa_total /= len(dataLoader)
 
-    return loss_total, oa_total
+    # metrics calculations
+    preds_total = torch.concat(preds_total)
+    labels_total = torch.concat(labels_total)
+
+    dict_metrics, cfm_fig = compute_metrics(preds_total, labels_total, number_of_categories, device)
+
+    return loss_total, oa_total, dict_metrics, cfm_fig
 
 
-def validate(cfg, dataLoader, model):
+def validate(cfg, dataLoader, model, number_of_categories):
     """
     Validation function. Note that this looks almost the same as the training
     function, except that we don't use any optimizer or gradient steps.
@@ -303,6 +323,10 @@ def validate(cfg, dataLoader, model):
     # iterate over dataLoader
     progressBar = trange(len(dataLoader))
 
+    # Preds and labels     
+    preds_total = []
+    labels_total = []
+
     # don't calculate intermediate gradient steps: we don't need them, so this saves memory and is faster
     with torch.no_grad():
         for batch_n, batch in enumerate(dataLoader):
@@ -323,6 +347,10 @@ def validate(cfg, dataLoader, model):
             oa = torch.mean((pred_label == labels).float())
             oa_total += oa.item()
 
+            # Accumulate
+            preds_total.append(pred_label)
+            labels_total.append(labels)
+
             progressBar.set_description(
                 "[Val] Loss: {:.2f}; OA: {:.2f}%".format(
                     loss_total / (batch_n + 1), 100 * oa_total / (batch_n + 1)
@@ -336,7 +364,42 @@ def validate(cfg, dataLoader, model):
     loss_total /= len(dataLoader)
     oa_total /= len(dataLoader)
 
-    return loss_total, oa_total
+    # metrics calculations
+    preds_total = torch.concat(preds_total)
+    labels_total = torch.concat(labels_total)
+
+    dict_metrics, cfm_fig = compute_metrics(preds_total, labels_total, number_of_categories, device)
+
+    return loss_total, oa_total, dict_metrics, cfm_fig
+
+
+def compute_metrics(preds_total, labels_total, number_of_categories, device):
+
+    # Species specific
+    acc_tm = torchmetrics.classification.Accuracy(task="binary", 
+                                                  num_classes=number_of_categories).to(device)
+    rec_tm = torchmetrics.classification.Recall(task="binary", 
+                                                num_classes=number_of_categories).to(device)
+    pre_tm = torchmetrics.classification.Precision(task="binary", 
+                                                   num_classes=number_of_categories).to(device)
+    dict_metrics = {}
+    for cls in range(number_of_categories):
+        preds_bin = torch.eq(preds_total, cls)
+        labels_bin = torch.eq(labels_total, cls)
+        dict_metrics[cls] = { 
+            "acc_tm": acc_tm(preds_bin, labels_bin),
+            "rec_tm": rec_tm(preds_bin, labels_bin),
+            "pre_tm": pre_tm(preds_bin, labels_bin),
+        }
+
+    # Confusion matrix
+    cfm = torchmetrics.classification.MulticlassConfusionMatrix(
+        num_classes=number_of_categories, normalize="true").to(device)
+    cfm.update(preds_total, labels_total)
+    cfm_fig = cfm.plot()[0]
+    cfm_fig.set_size_inches(8,8)
+
+    return dict_metrics, cfm_fig
 
 
 #############################################################
@@ -347,8 +410,11 @@ def make_split_name(cfg):
 
 
 def make_run_name(model_name, cfg):
+    current_datetime = datetime.datetime.now()
     run_name = (
-        model_name
+        current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+        + "_"
+        + model_name
         + "_"
         + str(cfg["num_epochs"])
         + "e"
@@ -368,20 +434,20 @@ def make_run_name(model_name, cfg):
 #############################################################
 
 
-def main():
+def main(cfg):
 
     # Argument parser for command-line arguments:
     # python ct_classifier/train.py --config configs/exp_resnet18.yaml
-    parser = argparse.ArgumentParser(description="Train deep learning model.")
-    parser.add_argument("--config", help="Path to config file")
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser(description="Train deep learning model.")
+    # parser.add_argument("--config", help="Path to config file")
+    # args = parser.parse_args()
 
     # load config
-    print(f'Using config "{args.config}"')
-    cfg = yaml.safe_load(open(args.config, "r"))
+    # print(f'Using config "{args.config}"')
+    # cfg = yaml.safe_load(open(args.config, "r"))
 
     # init random number generator seed (set at the start)
-    init_seed(cfg.get("seed", None))
+    init_seed(cfg["seed"])
 
     # check if GPU is available
     device = cfg["device"]
@@ -394,8 +460,11 @@ def main():
     # Load data
     dat_merged = pd.read_csv("data/tabular/all_dat_merged.csv")
     species_group_ord = pd.read_csv("data/tabular/species_groups_ord.csv")
-    # dat_labs_lookup = pd.read_csv("data/tabular/labels_lookup.csv")
-
+    dat_labs_lookup = pd.read_csv("data/tabular/labels_lookup.csv")\
+        .drop("size", axis = 1) \
+        .set_index("label_id") \
+        .to_dict()['label_group']
+    
     # Split data
     split_name = make_split_name(cfg)
     dat_train, dat_val, dat_test = split_data(dat_merged, species_group_ord, cfg, split_name)
@@ -407,7 +476,7 @@ def main():
     y_eval = dat_val.label_id
     y_test = dat_test.label_id
 
-    number_of_categories = pd.concat([dat_train, dat_val]).label_group.nunique()
+    number_of_categories = len(dat_labs_lookup)
 
     # Make run_name
     model_name = cfg["model_name"]
@@ -417,17 +486,17 @@ def main():
     # start a new wandb run to track this script
     wandb.init(
         # set the wandb project where this run will be logged
-        project="cv4e-test",
+        project=cfg["wandb_project"],
         # track hyperparameters and run metadata
         config=cfg,
         # name
-        name=run_name,
+        name=run_name
     )
 
     # initialize data loaders for training and validation set
-    dl_train = create_dataloader(cfg, x_train, y_train, split="train", model=model_name)
-    dl_val = create_dataloader(cfg, x_eval, y_eval, split="val", model=model_name)
-    dl_test = create_dataloader(cfg, x_test, y_test, split="test", model=model_name)
+    dl_train = create_dataloader(cfg, x_train, y_train)
+    dl_val = create_dataloader(cfg, x_eval, y_eval, shuffle=False)
+    dl_test = create_dataloader(cfg, x_test, y_test, shuffle=False)
 
     # initialize model
     model, current_epoch = load_model(cfg, number_of_categories)
@@ -435,7 +504,7 @@ def main():
     # set up model optimizer
     optim = setup_optimizer(cfg, model)
 
-    # Tracking of los_val
+    # Tracking of loss_val
     stop_track = 1000
 
     # we have everything now: data loaders, model, optimizer; let's do the epochs!
@@ -444,45 +513,73 @@ def main():
         current_epoch += 1
         print(f"Epoch {current_epoch}/{numEpochs}")
 
-        loss_train, oa_train = train(cfg, dl_train, model, optim)
-        loss_val, oa_val = validate(cfg, dl_val, model)
-        loss_test, oa_test = validate(cfg, dl_test, model)
-
-
-
+        loss_train, oa_train, dict_metrics_train, cfm_train = train(cfg, dl_train, model, 
+                                                                    optim, number_of_categories)
+        loss_val, oa_val, dict_metrics_val, cfm_val  = validate(cfg, dl_val, model, 
+                                                                number_of_categories)
+        loss_test, oa_test, dict_metrics_test, cfm_test  = validate(cfg, dl_test, model, 
+                                                                    number_of_categories)
+        
+        # print(f"{dict_metrics_train=}")
+        # print(f"{dict_metrics_train=}")
+        
         # log metrics to wandb
-        wandb.log(
-            {
+        wandb.log({
                 "loss_train": loss_train,
                 "oa_train": oa_train,
                 "loss_val": loss_val,
                 "oa_val": oa_val,
                 "loss_test": loss_test,
                 "oa_test": oa_test,
-            }
-        )
+                "train": {dat_labs_lookup[key]: value for key, value in dict_metrics_train.items()},
+                "val": {dat_labs_lookup[key]: value for key, value in dict_metrics_val.items()},
+                "test": {dat_labs_lookup[key]: value for key, value in dict_metrics_test.items()},
+                "cfm_train": wandb.Image(cfm_train),
+                "cfm_val": wandb.Image(cfm_val),
+                "cfm_test": wandb.Image(cfm_test)
+            })
 
         # combine stats and save
-        stats = {
-            "loss_train": loss_train,
-            "loss_val": loss_val,
-            "oa_train": oa_train,
-            "oa_val": oa_val,
-            "loss_test": loss_test,
-            "oa_test": oa_test,
-        }
 
-        if loss_train < stop_track:
-            stop_track = loss_train
-            save_model(cfg, current_epoch, model, stats, run_name)
+        if loss_val < stop_track:
+            stop_track = loss_val
+            save_model(cfg, current_epoch, model, run_name)
+        if current_epoch == numEpochs:
+            save_model(cfg, current_epoch, model, run_name)
 
     # [optional] finish the wandb run, necessary in notebooks
     wandb.finish()
 
 
+def parse_args():
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--wandb_project', type=str)
+    parser.add_argument('--basepath', type=str)
+    parser.add_argument('--train_val_split', type=float)
+    parser.add_argument('--data_frac', type=float)
+    parser.add_argument('--seed', type=int)
+    parser.add_argument('--device', type=str)
+    parser.add_argument('--num_workers', type=int)
+    parser.add_argument('--model_name', type=str)
+    parser.add_argument('--freezed', type=bool)
+    parser.add_argument('--image_size', type=int)
+    parser.add_argument('--num_epochs', type=int)
+    parser.add_argument('--batch_size', type=int)
+    parser.add_argument('--learning_rate', type=float)
+    parser.add_argument('--weight_decay', type=float)
+    parser.add_argument('--optimizer', type=str)
+    parser.add_argument('--rotation', type=int)
+    parser.add_argument('--horizontal_flip', type=float)
+
+    return vars(parser.parse_args())
+
+
 #############################################################
+
 
 if __name__ == "__main__":
     # This block only gets executed if you call the "train.py" script directly
     # (i.e., "python ct_classifier/train.py").
-    main()
+    cfg = parse_args()
+    main(cfg)

@@ -6,7 +6,6 @@ import sys
 sys.path.append('.')
 from myutils.MDSplit import *
 
-
 random.seed(77)
 
 print("Splitting data...")

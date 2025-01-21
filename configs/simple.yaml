@@ -1,0 +1,41 @@
+program: mdclassifier/train.py
+name: simplesweep
+method: grid
+metric:
+  goal: minimize
+  name: loss_val
+parameters:
+  wandb_project: 
+    value: "cv4e-sweep"
+  basepath: 
+    value: '/mnt/class_data/group4/val/trailcam/'
+  train_val_split: 
+    value: 0.3
+  data_frac: 
+    value: 0.5
+  seed: 
+    value: 32678456782 # random number generator seed (long integer value)
+  device: 
+    value: 'cuda' # if you have multiple GPU's, you can use 'cude:4' to specify which GPU to run on, e.g., the 4th
+  num_workers: 
+    value: 32  # number of CPU cores that load data in parallel. You can set this to the number of logical CPU cores that you have. 
+  model_name: 
+    value: 'resnet18'
+  freezed: 
+    value: False
+  image_size: 
+    value: 224
+  num_epochs:
+    value: 2
+  batch_size:
+    value: 128
+  learning_rate:
+    value: 0.0001
+  weight_decay:
+    value: 0.05
+  optimizer:
+    value: "adamw"
+  rotation:
+    value: 0
+  horizontal_flip:
+    value: 0.25

@@ -1,5 +1,7 @@
 # Model parameter
 model_name: 'resnet18'
+freezed: False
+wandb_project: 'cv4e-sweep'
 
 # environment/computational parameters
 seed: 32678456782 # random number generator seed (long integer value)
@@ -9,11 +11,14 @@ num_workers: 16  # number of CPU cores that load data in parallel. You can set t
 # dataset parameters
 basepath: '/mnt/class_data/group4/val/trailcam/'
 train_val_split: 0.3
-data_frac: 1.0
+data_frac: 0.5
 
 # training hyperparameters
-image_size: [224, 224]
-num_epochs: 100 # number of epochs. Each epoch has multiple iterations. In each epoch the model goes over the full dataset once.
+image_size: 224 # For resizing
+num_epochs: 200 # number of epochs. Each epoch has multiple iterations. In each epoch the model goes over the full dataset once.
 batch_size: 128 # number of images that are processed in parallel in every iteration
-learning_rate: 0.001 # hyperparameter to adjust the optimizer's learning rate 
-weight_decay: 0 # hyperparameter for regularization
+learning_rate: 0.0001 # hyperparameter to adjust the optimizer's learning rate 
+weight_decay: 0.001 # hyperparameter for regularization
+optimizer: "sgd"
+rotation: 10
+horizontal_flip: 0.5
