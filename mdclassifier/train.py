@@ -14,10 +14,11 @@ from myutils.MDSplit import *
 
 import torch
 import os
-# import yaml
+import yaml
 import argparse
 import wandb
 import torchmetrics
+import datetime
 
 import torch.optim as optim
 import pandas as pd
@@ -164,25 +165,26 @@ def load_model(cfg, number_of_categories):
     return model_instance, start_epoch
 
 
-# def save_model(cfg, epoch, model, stats, run_name, last=False):
-#     # make sure save directory exists; create if not
-#     os.makedirs(f"runs/{run_name}", exist_ok=True)
+def save_model(cfg, epoch, model, run_name, last=False):
+    # make sure save directory exists; create if not
+    os.makedirs(f"runs/{run_name}", exist_ok=True)
 
-#     # get model parameters and add to stats...
-#     stats["model"] = model.state_dict()
-#     stats["epoch"] = epoch
+    # get model parameters and save
+    output = {}
+    output["model"] = model.state_dict()
+    output["epoch"] = epoch
 
-#     # ...and save
-#     if last:
-#         torch.save(stats, open(f"runs/{run_name}/{epoch}.pt", "wb"))
-#     else:
-#         torch.save(stats, open(f"runs/{run_name}/best.pt", "wb"))
+    # ...and save
+    if last:
+        torch.save(output, open(f"runs/{run_name}/{epoch}.pt", "wb"))
+    else:
+        torch.save(output, open(f"runs/{run_name}/best.pt", "wb"))
     
-#     # also save config file if not present
-#     cfpath = f"runs/{run_name}/{run_name}_config.yaml"
-#     if not os.path.exists(cfpath):
-#         with open(cfpath, "w") as f:
-#             yaml.dump(cfg, f)
+    # also save config file if not present
+    cfpath = f"runs/{run_name}/{run_name}_config.yaml"
+    if not os.path.exists(cfpath):
+        with open(cfpath, "w") as f:
+            yaml.dump(cfg, f)
 
 
 def setup_optimizer(cfg, model):
@@ -407,23 +409,26 @@ def make_split_name(cfg):
     return "frac" + str(cfg["data_frac"]) + "_" + "split" + str(cfg["train_val_split"])
 
 
-# def make_run_name(model_name, cfg):
-#     run_name = (
-#         model_name
-#         + "_"
-#         + str(cfg["num_epochs"])
-#         + "e"
-#         + "_"
-#         + str(cfg["batch_size"])
-#         + "bs"
-#         + "_"
-#         + str(cfg["learning_rate"])
-#         + "lr"
-#         + "_"
-#         + str(cfg["weight_decay"])
-#         + "wd"
-#     )
-#     return run_name
+def make_run_name(model_name, cfg):
+    current_datetime = datetime.datetime.now()
+    run_name = (
+        current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
+        + "_"
+        + model_name
+        + "_"
+        + str(cfg["num_epochs"])
+        + "e"
+        + "_"
+        + str(cfg["batch_size"])
+        + "bs"
+        + "_"
+        + str(cfg["learning_rate"])
+        + "lr"
+        + "_"
+        + str(cfg["weight_decay"])
+        + "wd"
+    )
+    return run_name
 
 
 #############################################################
@@ -474,8 +479,8 @@ def main(cfg):
     number_of_categories = len(dat_labs_lookup)
 
     # Make run_name
-    # model_name = cfg["model_name"]
-    # run_name = make_run_name(model_name, cfg) + "_" + split_name
+    model_name = cfg["model_name"]
+    run_name = make_run_name(model_name, cfg) + "_" + split_name
 
     # start wandb
     # start a new wandb run to track this script
@@ -485,7 +490,7 @@ def main(cfg):
         # track hyperparameters and run metadata
         config=cfg,
         # name
-        # name=run_name,
+        name=run_name
     )
 
     # initialize data loaders for training and validation set
@@ -500,7 +505,7 @@ def main(cfg):
     optim = setup_optimizer(cfg, model)
 
     # Tracking of loss_val
-    # stop_track = 1000
+    stop_track = 1000
 
     # we have everything now: data loaders, model, optimizer; let's do the epochs!
     numEpochs = cfg["num_epochs"]
@@ -533,11 +538,11 @@ def main(cfg):
 
         # combine stats and save
 
-        # if loss_val < stop_track:
-        #     stop_track = loss_val
-        #     save_model(cfg, current_epoch, model, stats, run_name)
-        # if current_epoch == numEpochs:
-        #     save_model(cfg, current_epoch, model, stats, run_name)
+        if loss_val < stop_track:
+            stop_track = loss_val
+            save_model(cfg, current_epoch, model, run_name)
+        if current_epoch == numEpochs:
+            save_model(cfg, current_epoch, model, run_name)
 
     # [optional] finish the wandb run, necessary in notebooks
     wandb.finish()
