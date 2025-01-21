@@ -1,12 +1,12 @@
 program: mdclassifier/train.py
-name: major-sweep
+name: minimal-sweep
 method: grid
 metric:
   goal: minimize
   name: loss_val
 parameters:
   wandb_project: 
-    value: "cv4e-sweep"
+    value: "cv4e-sweep-jan20"
   basepath: 
     value: '/mnt/class_data/group4/val/trailcam/'
   train_val_split: 
