@@ -21,6 +21,8 @@ parameters:
     value: 32  # number of CPU cores that load data in parallel. You can set this to the number of logical CPU cores that you have. 
   model_name: 
     value: 'resnet18'
+  binary:
+    value: True
   freezed: 
     value: False
   image_size: 

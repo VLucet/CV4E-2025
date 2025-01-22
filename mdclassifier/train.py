@@ -215,8 +215,10 @@ def train(cfg, dataLoader, model, optimizer, number_of_categories, weights):
     """
     Our actual training function.
     """
-
+    # Get device
     device = cfg["device"]
+    # Check for binarity
+    is_bin = cfg["binary"]
 
     # put model on device
     model.to(device)
@@ -228,7 +230,11 @@ def train(cfg, dataLoader, model, optimizer, number_of_categories, weights):
 
     # loss function
     #  note: if you're doing multi target classification, use nn.BCEWithLogitsLoss() and convert labels to float
-    criterion = nn.CrossEntropyLoss(weights)
+    
+    if is_bin:
+        criterion = nn.BCEWithLogitsLoss()
+    else:
+        criterion = nn.CrossEntropyLoss(weights)
 
     # running averages
     # for now, we just log the loss and overall accuracy (OA)
@@ -263,9 +269,11 @@ def train(cfg, dataLoader, model, optimizer, number_of_categories, weights):
         # apply gradients to model parameters
         optimizer.step()
 
-        # log statistics
         # the .item() command retrieves the value of a single-valued tensor, regardless of its data type and device of tensor
-        loss_total += loss.item()
+        if is_bin:
+            loss_total += loss.item()*len(data)
+        else:
+            loss_total += loss.item()
 
         # the predicted label is the one at position (class index) with highest predicted value
         pred_label = torch.argmax(prediction, dim=1)
@@ -307,14 +315,22 @@ def validate(cfg, dataLoader, model, number_of_categories, weights):
     function, except that we don't use any optimizer or gradient steps.
     """
 
+    # Get device
     device = cfg["device"]
+    # Check for binarity
+    is_bin = cfg["binary"]
+
+    # put model on device
     model.to(device)
 
     # put the model into evaluation mode
     model.eval()
 
     # we still need a criterion to calculate the validation loss
-    criterion = nn.CrossEntropyLoss(weights)
+    if is_bin:
+        criterion = nn.BCEWithLogitsLoss()
+    else:
+        criterion = nn.CrossEntropyLoss(weights)
 
     # running averages
     # for now, we just log the loss and overall accuracy (OA)
@@ -326,6 +342,9 @@ def validate(cfg, dataLoader, model, number_of_categories, weights):
     # Preds and labels     
     preds_total = []
     labels_total = []
+
+    # Check for binarity
+    is_bin = cfg["binary"]
 
     # don't calculate intermediate gradient steps: we don't need them, so this saves memory and is faster
     with torch.no_grad():
@@ -340,8 +359,10 @@ def validate(cfg, dataLoader, model, number_of_categories, weights):
             # loss
             loss = criterion(prediction, labels)
 
-            # log statistics
-            loss_total += loss.item()
+            if is_bin:
+                loss_total += loss.item()*len(data)
+            else:
+                loss_total += loss.item()
 
             pred_label = torch.argmax(prediction, dim=1)
             oa = torch.mean((pred_label == labels).float())
@@ -457,13 +478,16 @@ def main(cfg):
         )
         cfg["device"] = "cpu"
 
+    # Check for binarity
+    is_bin = cfg["binary"]
+
     # Load data
     dat_merged = pd.read_csv("data/tabular/all_dat_merged.csv")
     species_group_ord = pd.read_csv("data/tabular/species_groups_ord.csv")
     lookup_with_size = pd.read_csv("data/tabular/labels_lookup.csv")
     dat_labs_lookup = lookup_with_size.drop("size", axis = 1) \
         .set_index("label_id") \
-        .to_dict()['label_group']
+        .to_dict()['label_group_bin' if is_bin else 'label_group']
     
     # Split data
     split_name = make_split_name(cfg)
@@ -570,6 +594,7 @@ def parse_args():
     parser.add_argument('--device', type=str)
     parser.add_argument('--num_workers', type=int)
     parser.add_argument('--model_name', type=str)
+    parser.add_argument('--binary', type=bool)
     parser.add_argument('--freezed', type=bool)
     parser.add_argument('--image_size', type=int)
     parser.add_argument('--num_epochs', type=int)
