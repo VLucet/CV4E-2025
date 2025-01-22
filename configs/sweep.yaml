@@ -6,7 +6,7 @@ metric:
   name: loss_val
 parameters:
   wandb_project: 
-    value: "cv4e-sweep-jan21-bin-bal"
+    value: "cv4e-sweep-jan22-bin-bal"
   basepath: 
     value: '/mnt/class_data/group4/val/trailcam/'
   train_val_split: 

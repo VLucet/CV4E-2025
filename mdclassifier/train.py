@@ -507,9 +507,9 @@ def main(cfg):
         weights_train = torch.tensor(
             list(1/(y_train.value_counts()/max(y_train.value_counts())))
         ).to(device)
-        print(f"{weights_train=}")
     else:
         weights_train = torch.ones(size=len(number_of_categories))
+    print(f"{weights_train=}")
 
     number_of_categories = len(dat_labs_lookup)
 
