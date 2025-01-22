@@ -211,7 +211,7 @@ def setup_optimizer(cfg, model):
     return optimizer
 
 
-def train(cfg, dataLoader, model, optimizer, number_of_categories):
+def train(cfg, dataLoader, model, optimizer, number_of_categories, weights):
     """
     Our actual training function.
     """
@@ -228,7 +228,7 @@ def train(cfg, dataLoader, model, optimizer, number_of_categories):
 
     # loss function
     #  note: if you're doing multi target classification, use nn.BCEWithLogitsLoss() and convert labels to float
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(weights)
 
     # running averages
     # for now, we just log the loss and overall accuracy (OA)
@@ -301,7 +301,7 @@ def train(cfg, dataLoader, model, optimizer, number_of_categories):
     return loss_total, oa_total, dict_metrics, cfm_fig
 
 
-def validate(cfg, dataLoader, model, number_of_categories):
+def validate(cfg, dataLoader, model, number_of_categories, weights):
     """
     Validation function. Note that this looks almost the same as the training
     function, except that we don't use any optimizer or gradient steps.
@@ -314,7 +314,7 @@ def validate(cfg, dataLoader, model, number_of_categories):
     model.eval()
 
     # we still need a criterion to calculate the validation loss
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(weights)
 
     # running averages
     # for now, we just log the loss and overall accuracy (OA)
@@ -460,8 +460,8 @@ def main(cfg):
     # Load data
     dat_merged = pd.read_csv("data/tabular/all_dat_merged.csv")
     species_group_ord = pd.read_csv("data/tabular/species_groups_ord.csv")
-    dat_labs_lookup = pd.read_csv("data/tabular/labels_lookup.csv")\
-        .drop("size", axis = 1) \
+    lookup_with_size = pd.read_csv("data/tabular/labels_lookup.csv")
+    dat_labs_lookup = lookup_with_size.drop("size", axis = 1) \
         .set_index("label_id") \
         .to_dict()['label_group']
     
@@ -475,6 +475,11 @@ def main(cfg):
     y_train = dat_train.label_id
     y_eval = dat_val.label_id
     y_test = dat_test.label_id
+
+    weights_train = torch.tensor(
+        list(1/(y_train.value_counts()/max(y_train.value_counts())))
+    ).to(device)
+    print(f"{weights_train=}")
 
     number_of_categories = len(dat_labs_lookup)
 
@@ -514,11 +519,14 @@ def main(cfg):
         print(f"Epoch {current_epoch}/{numEpochs}")
 
         loss_train, oa_train, dict_metrics_train, cfm_train = train(cfg, dl_train, model, 
-                                                                    optim, number_of_categories)
+                                                                    optim, number_of_categories, 
+                                                                    weights_train)
         loss_val, oa_val, dict_metrics_val, cfm_val  = validate(cfg, dl_val, model, 
-                                                                number_of_categories)
+                                                                number_of_categories, 
+                                                                weights_train)
         loss_test, oa_test, dict_metrics_test, cfm_test  = validate(cfg, dl_test, model, 
-                                                                    number_of_categories)
+                                                                    number_of_categories, 
+                                                                    weights_train)
         
         # print(f"{dict_metrics_train=}")
         # print(f"{dict_metrics_train=}")

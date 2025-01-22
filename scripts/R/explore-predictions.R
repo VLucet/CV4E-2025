@@ -26,9 +26,10 @@ preds = read_csv("outputs/predictions.csv") %>%
 
 head(preds)
 
-ggplot(preds) +
+x <- ggplot(preds) +
   geom_density(aes(x = score, fill=pred_category),
                alpha = 0.2) +
   facet_wrap(~truth) +
   theme_minimal() +
   scale_fill_manual(values = c(c("#E69F00", rep("#56B4E9", 11))))
+ggsave("plot.jpg", x)

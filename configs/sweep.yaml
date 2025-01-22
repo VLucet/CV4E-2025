@@ -6,7 +6,7 @@ metric:
   name: loss_val
 parameters:
   wandb_project: 
-    value: "cv4e-sweep-jan21"
+    value: "cv4e-sweep-jan21-balanced-1over"
   basepath: 
     value: '/mnt/class_data/group4/val/trailcam/'
   train_val_split: 
@@ -14,7 +14,7 @@ parameters:
   data_frac: 
     value: 1
   seed: 
-    value: 32678456782 # random number generator seed (long integer value)
+    values: [32678456782, 10366395667, 46303749199, 13757672088, 57650004417] # random number generator seed (long integer value)
   device: 
     value: 'cuda' # if you have multiple GPU's, you can use 'cude:4' to specify which GPU to run on, e.g., the 4th
   num_workers: 
@@ -26,7 +26,7 @@ parameters:
   image_size: 
     value: 224
   num_epochs:
-    value: 200
+    value: 100
   batch_size:
     value: 256 
   learning_rate:
