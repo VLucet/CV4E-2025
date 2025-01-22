@@ -47,8 +47,8 @@ labels_lookup = dat_merged.groupby(by=["label_group", "label_group_bin"], as_ind
                                           sort=False) \
     .size() \
     .sort_values('size', ascending=False)
-# labels_lookup["label_id"] = range(len(labels_lookup))
-labels_lookup["label_id"] = [0 if x == "NONE" else 1 for x in labels_lookup.label_group_bin]
+labels_lookup["label_id"] = range(len(labels_lookup))
+labels_lookup["label_id_bin"] = [0 if x == "NONE" else 1 for x in labels_lookup.label_group_bin]
 
 labels_lookup.to_csv("data/tabular/labels_lookup.csv", index=False)
 dat_merged = dat_merged.merge(labels_lookup, how="left", 
