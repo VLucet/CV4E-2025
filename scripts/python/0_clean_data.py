@@ -28,7 +28,7 @@ dat_group = dat.groupby(by=["label_spe"], as_index=False, sort=False) \
 dat_group_mod = pd.read_csv("data/tabular/species_groups.csv")
 
 # Ordering
-dat_group_mod_ord = dat_group_mod.groupby(by=["label_group"], as_index=False, 
+dat_group_mod_ord = dat_group_mod.groupby(by=["label_group", "label_group_bin"], as_index=False, 
                                           sort=False) \
     .sum() \
     .sort_values('size', ascending=False)
