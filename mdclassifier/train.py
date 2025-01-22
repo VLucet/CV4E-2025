@@ -481,6 +481,9 @@ def main(cfg):
     # Check for binarity
     is_bin = cfg["binary"]
 
+    # Check for balance
+    is_bal = cfg["balanced"]
+
     # Load data
     dat_merged = pd.read_csv("data/tabular/all_dat_merged.csv")
     species_group_ord = pd.read_csv("data/tabular/species_groups_ord.csv")
@@ -500,10 +503,13 @@ def main(cfg):
     y_eval = dat_val.label_id
     y_test = dat_test.label_id
 
-    weights_train = torch.tensor(
-        list(1/(y_train.value_counts()/max(y_train.value_counts())))
-    ).to(device)
-    print(f"{weights_train=}")
+    if is_bal:
+        weights_train = torch.tensor(
+            list(1/(y_train.value_counts()/max(y_train.value_counts())))
+        ).to(device)
+        print(f"{weights_train=}")
+    else:
+        weights_train = torch.ones(size=len(number_of_categories))
 
     number_of_categories = len(dat_labs_lookup)
 
@@ -595,6 +601,7 @@ def parse_args():
     parser.add_argument('--num_workers', type=int)
     parser.add_argument('--model_name', type=str)
     parser.add_argument('--binary', type=bool)
+    parser.add_argument('--balanced', type=bool)
     parser.add_argument('--freezed', type=bool)
     parser.add_argument('--image_size', type=int)
     parser.add_argument('--num_epochs', type=int)
