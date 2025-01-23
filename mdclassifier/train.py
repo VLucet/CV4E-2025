@@ -261,6 +261,9 @@ def train(cfg, dataLoader, model, optimizer, number_of_categories, weights):
         optimizer.zero_grad()
 
         # loss
+        if is_bin:
+            prediction = torch.reshape(prediction, labels.shape)
+            labels = labels.float()
         loss = criterion(prediction, labels)
 
         # backward pass (calculate gradients of current batch)
@@ -276,7 +279,12 @@ def train(cfg, dataLoader, model, optimizer, number_of_categories, weights):
             loss_total += loss.item()
 
         # the predicted label is the one at position (class index) with highest predicted value
-        pred_label = torch.argmax(prediction, dim=1)
+        
+        if is_bin:
+            pred_label = torch.gt(prediction, 0).int()
+        else:
+            pred_label = torch.argmax(prediction, dim=1)
+
         # OA: number of correct predictions divided by batch size (i.e., average/mean)
         oa = torch.mean((pred_label == labels).float())
         oa_total += oa.item()
@@ -297,7 +305,10 @@ def train(cfg, dataLoader, model, optimizer, number_of_categories, weights):
 
     # end of epoch; finalize
     # shorthand notation for: loss_total = loss_total / len(dataLoader)
-    loss_total /= len(dataLoader)
+    if is_bin:
+        loss_total /= len(dataLoader.dataset)
+    else:
+        loss_total /= len(dataLoader)
     oa_total /= len(dataLoader)
 
     # metrics calculations
@@ -356,6 +367,10 @@ def validate(cfg, dataLoader, model, number_of_categories, weights):
             # forward pass
             prediction = model(data)
 
+            if is_bin:
+                prediction = torch.reshape(prediction, labels.shape)
+                labels = labels.float()
+            
             # loss
             loss = criterion(prediction, labels)
 
@@ -364,7 +379,12 @@ def validate(cfg, dataLoader, model, number_of_categories, weights):
             else:
                 loss_total += loss.item()
 
-            pred_label = torch.argmax(prediction, dim=1)
+            if is_bin:
+                pred_label = torch.gt(prediction, 0).int()
+            else:
+                pred_label = torch.argmax(prediction, dim=1)
+            
+            # OA: number of correct predictions divided by batch size (i.e., average/mean)
             oa = torch.mean((pred_label == labels).float())
             oa_total += oa.item()
 
@@ -382,7 +402,10 @@ def validate(cfg, dataLoader, model, number_of_categories, weights):
         progressBar.close()
 
     # end of epoch; finalize
-    loss_total /= len(dataLoader)
+    if is_bin:
+        loss_total /= len(dataLoader.dataset)
+    else:
+        loss_total /= len(dataLoader)
     oa_total /= len(dataLoader)
 
     # metrics calculations
@@ -414,8 +437,14 @@ def compute_metrics(preds_total, labels_total, number_of_categories, device):
         }
 
     # Confusion matrix
-    cfm = torchmetrics.classification.MulticlassConfusionMatrix(
-        num_classes=number_of_categories, normalize="true").to(device)
+    if number_of_categories > 1:
+        cfm = torchmetrics.classification.MulticlassConfusionMatrix(
+            num_classes=number_of_categories, normalize="true"
+            ).to(device)
+    else: 
+        cfm = torchmetrics.classification.BinaryConfusionMatrix(
+            normalize="true"
+        ).to(device)
     cfm.update(preds_total, labels_total)
     cfm_fig = cfm.plot()[0]
     cfm_fig.set_size_inches(8,8)
@@ -480,6 +509,10 @@ def main(cfg):
 
     # Check for binarity
     is_bin = cfg["binary"]
+    
+    # get the right columns
+    col_to_select = 'label_group_bin' if is_bin else 'label_group'
+    id_col = 'label_id_bin' if is_bin else 'label_id'
 
     # Check for balance
     is_bal = cfg["balanced"]
@@ -490,8 +523,12 @@ def main(cfg):
     lookup_with_size = pd.read_csv("data/tabular/labels_lookup.csv")
     dat_labs_lookup = lookup_with_size.drop("size", axis = 1) \
         .set_index("label_id") \
-        .to_dict()['label_group_bin' if is_bin else 'label_group']
+        .loc[:, [col_to_select, id_col]] \
+        .drop_duplicates() \
+        .to_dict()[col_to_select]
     
+    print(f"{dat_labs_lookup=}")
+
     # Split data
     split_name = make_split_name(cfg)
     dat_train, dat_val, dat_test = split_data(dat_merged, species_group_ord, cfg, split_name)
@@ -499,9 +536,9 @@ def main(cfg):
     x_train = dat_train.crop_path
     x_eval = dat_val.crop_path
     x_test = dat_test.crop_path
-    y_train = dat_train.label_id
-    y_eval = dat_val.label_id
-    y_test = dat_test.label_id
+    y_train = dat_train[id_col]
+    y_eval = dat_val[id_col]
+    y_test = dat_test[id_col]
 
     if is_bal:
         weights_train = torch.tensor(
@@ -511,7 +548,10 @@ def main(cfg):
         weights_train = torch.ones(size=len(number_of_categories))
     print(f"{weights_train=}")
 
-    number_of_categories = len(dat_labs_lookup)
+    if is_bin:
+        number_of_categories = 1
+    else:
+        number_of_categories = len(dat_labs_lookup)
 
     # Make run_name
     model_name = cfg["model_name"]
