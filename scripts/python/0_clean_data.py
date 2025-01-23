@@ -52,7 +52,7 @@ labels_lookup["label_id_bin"] = [0 if x == "NONE" else 1 for x in labels_lookup.
 
 labels_lookup.to_csv("data/tabular/labels_lookup.csv", index=False)
 dat_merged = dat_merged.merge(labels_lookup, how="left", 
-                              on='label_group')
+                              on=["label_group", "label_group_bin"])
 
 # Write out
 dat_merged.to_csv("data/tabular/all_dat_merged.csv",
