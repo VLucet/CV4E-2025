@@ -421,30 +421,44 @@ def compute_metrics(preds_total, labels_total, number_of_categories, device):
 
     # Species specific
     acc_tm = torchmetrics.classification.Accuracy(task="binary", 
-                                                  num_classes=number_of_categories).to(device)
+                                                num_classes=number_of_categories).to(device)
     rec_tm = torchmetrics.classification.Recall(task="binary", 
                                                 num_classes=number_of_categories).to(device)
     pre_tm = torchmetrics.classification.Precision(task="binary", 
-                                                   num_classes=number_of_categories).to(device)
+                                                num_classes=number_of_categories).to(device)
     dict_metrics = {}
-    for cls in range(number_of_categories):
-        preds_bin = torch.eq(preds_total, cls)
-        labels_bin = torch.eq(labels_total, cls)
-        dict_metrics[cls] = { 
-            "acc_tm": acc_tm(preds_bin, labels_bin),
-            "rec_tm": rec_tm(preds_bin, labels_bin),
-            "pre_tm": pre_tm(preds_bin, labels_bin),
-        }
-
-    # Confusion matrix
+    
     if number_of_categories > 1:
+        # Species specific
+        for cls in range(number_of_categories):
+            preds_bin = torch.eq(preds_total, cls)
+            labels_bin = torch.eq(labels_total, cls)
+            dict_metrics[cls] = { 
+                "acc_tm": acc_tm(preds_bin, labels_bin),
+                "rec_tm": rec_tm(preds_bin, labels_bin),
+                "pre_tm": pre_tm(preds_bin, labels_bin),
+            }
+
         cfm = torchmetrics.classification.MulticlassConfusionMatrix(
             num_classes=number_of_categories, normalize="true"
             ).to(device)
+        
     else: 
+        # Binary
+        for cls in range(number_of_categories+1):
+            preds_bin = torch.eq(preds_total, cls)
+            labels_bin = torch.eq(labels_total, cls)
+            dict_metrics[cls] = { 
+                "acc_tm": acc_tm(preds_bin, labels_bin),
+                "rec_tm": rec_tm(preds_bin, labels_bin),
+                "pre_tm": pre_tm(preds_bin, labels_bin),
+            }
+
+
         cfm = torchmetrics.classification.BinaryConfusionMatrix(
             normalize="true"
         ).to(device)
+
     cfm.update(preds_total, labels_total)
     cfm_fig = cfm.plot()[0]
     cfm_fig.set_size_inches(8,8)
