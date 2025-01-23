@@ -58,7 +58,7 @@ the_split = split_locations_into_train_val(dat_tt_tab_dict,
                                target_val_fraction=frac,
                                category_to_max_allowable_error=None,                                   
                                category_to_error_weight=None,
-                               default_max_allowable_error=0.1)
+                               default_max_allowable_error=0.15)
 
 dat_train = dat_merged.query(f'loc_id not in {the_split[0]}')
 dat_val = dat_merged.query(f'loc_id in {the_split[0]}')

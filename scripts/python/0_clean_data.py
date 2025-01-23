@@ -20,7 +20,7 @@ dat = dat.assign(dep_id = [x[0] for x in dat.meta_split],
                  cam_id = [x[3] for x in dat.meta_split])
 
 # Make table of labels
-dat_group = dat.groupby(by=["label_spe"], as_index=False, sort=False) \
+dat_group = dat.groupby(by=["label_class", "label_spe"], as_index=False, sort=False) \
     .size() \
     .sort_values('size', ascending=False)
 # Write out for manual grouping
@@ -39,8 +39,10 @@ dat_group_mod_ord.to_csv("data/tabular/species_groups_ord.csv",
 
 # Merge with grouped data and sort
 dat_merged = dat.merge(dat_group_mod.drop('size', axis=1), how='left', 
-                       on='label_spe') \
-    .query('label_group != "UNID"') #\
+                       on=['label_class', 'label_spe']) \
+    .query('label_group != "UNID"') \
+    .query('label_group != "MD"') \
+    .drop('label_class', axis = 1)
     # .query('label_group in ["NONE", "STAF", "CARI"]')
 
 labels_lookup = dat_merged.groupby(by=["label_group", "label_group_bin"], as_index=False, 
