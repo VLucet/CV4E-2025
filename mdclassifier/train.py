@@ -454,7 +454,6 @@ def compute_metrics(preds_total, labels_total, number_of_categories, device):
                 "pre_tm": pre_tm(preds_bin, labels_bin),
             }
 
-
         cfm = torchmetrics.classification.BinaryConfusionMatrix(
             normalize="true"
         ).to(device)
