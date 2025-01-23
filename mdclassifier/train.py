@@ -535,7 +535,7 @@ def main(cfg):
     species_group_ord = pd.read_csv("data/tabular/species_groups_ord.csv")
     lookup_with_size = pd.read_csv("data/tabular/labels_lookup.csv")
     dat_labs_lookup = lookup_with_size.drop("size", axis = 1) \
-        .set_index("label_id") \
+        .set_index(id_col, drop = False) \
         .loc[:, [col_to_select, id_col]] \
         .drop_duplicates() \
         .to_dict()[col_to_select]
@@ -613,6 +613,8 @@ def main(cfg):
         
         # print(f"{dict_metrics_train=}")
         # print(f"{dict_metrics_train=}")
+
+        print(dat_labs_lookup)
         
         # log metrics to wandb
         wandb.log({
