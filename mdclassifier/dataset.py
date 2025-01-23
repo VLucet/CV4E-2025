@@ -51,10 +51,12 @@ class MDclassDataset(Dataset):
 
         # if we don't have labels (e.g. for test set) just return the image and image id
         if self.label is None:
-            sample = {"image_id": image_id, "image": image}
+            sample = {"image_id": image_id, "image": image, 
+                      "image_path": image_path}
         else:
             label = torch.tensor(self.label.iloc[index], dtype=torch.long)
-            sample = {"image_id": image_id, "image": image, "label": label}
+            sample = {"image_id": image_id, "image": image, "label": label, 
+                      "image_path": image_path}
         return sample
 
     def __len__(self):
