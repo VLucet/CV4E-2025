@@ -2,6 +2,9 @@
 	"folders": [
 		{
 			"uri": "vscode-remote://ssh-remote+jetstream/home/Vale/Documents/cv4e/CV4E-2025"
+		},
+		{
+			"path": "../CameraTraps"
 		}
 	],
 	"remoteAuthority": "ssh-remote+jetstream"
