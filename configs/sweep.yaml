@@ -5,41 +5,43 @@ metric:
   goal: minimize
   name: loss_val
 parameters:
+  # Single (use `value:`)
   wandb_project: 
-    value: "cv4e-sweep-jan23-all"
+    value: "cv4e-sweep-march1st-all-attempt2"
   basepath: 
     value: '/mnt/class_data/group4/val/trailcam/'
   train_val_split: 
     value: 0.3
   data_frac: 
     value: 1
-  seed: 
-    values: [32678456782, 10366395667] # random number generator seed (long integer value) # 46303749199, 13757672088, 57650004417
   device: 
     value: 'cuda' # if you have multiple GPU's, you can use 'cude:4' to specify which GPU to run on, e.g., the 4th
   num_workers: 
     value: 32  # number of CPU cores that load data in parallel. You can set this to the number of logical CPU cores that you have. 
-  model_name: 
-    value: 'resnet18'
-  binary:
-    value: [True, False]
-  balanced:
-    values: [True, False]
-  freezed: 
-    value: False
   image_size: 
     value: 224
+  freezed: 
+    value: False
+  seed: 
+    value: 46303749199 # random number generator seed (long integer value) # 32678456782, 13757672088, 57650004417
+  # Many (use `values:`)
+  model_name: 
+    values: ['resnet18', 'resnet34']
+  binary:
+    values: [True, False]
+  balanced:
+    values: [True, False]
   num_epochs:
-    value: 100
-  batch_size:
-    value: 256 
+    values: [5, 100]
   learning_rate:
-    values: [0.0001, 0.001]
+    values: [0.0001,  0.001,  0.01,  0.1]
   weight_decay:
-    value: 0
+    values: [0.00001, 0.0001, 0.001, 0.01]
   optimizer:
     values: ["sgd", "adamw"]
   rotation:
-    value: 0
+    values: [0, 30]
   horizontal_flip:
-    value: 0
+    values: [0, 0.5]
+  batch_size:
+    values: [256, 128, 64, 32]
