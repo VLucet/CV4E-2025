@@ -1,5 +1,5 @@
 program: mdclassifier/train.py
-name: cv4e-sweep
+name: cv4e-sweep-march2025
 method: grid
 metric:
   goal: minimize
@@ -7,7 +7,7 @@ metric:
 parameters:
   # Single (use `value:`)
   wandb_project: 
-    value: "cv4e-sweep-march1st-all-attempt2"
+    value: "cv4e-sweep-march2025-001"
   basepath: 
     value: '/media/vlucet/T7ShieldSSD/trailcam/'
   train_val_split: 
@@ -15,29 +15,24 @@ parameters:
   data_frac: 
     value: 0.3
   seed: 
-    values: [32678456782, 10366395667] # random number generator seed (long integer value) # 46303749199, 13757672088, 57650004417
+    value: 32678456782 # random number generator seed (long integer value) # 10366395667 46303749199, 13757672088, 57650004417
   device: 
     value: 'cuda' # if you have multiple GPU's, you can use 'cude:4' to specify which GPU to run on, e.g., the 4th
   num_workers: 
-    value: 12  # number of CPU cores that load data in parallel. You can set this to the number of logical CPU cores that you have. 
-    value: 32  # number of CPU cores that load data in parallel. You can set this to the number of logical CPU cores that you have. 
+    value: 12  # number of CPU cores that load data in parallel. You can set this to the number of logical CPU cores that you have.
   image_size: 
     value: 224
   freezed: 
     value: False
-  seed: 
-    value: 46303749199 # random number generator seed (long integer value) # 32678456782, 13757672088, 57650004417
+  batch_size:
+    value: 64 
+  num_epochs:
+    value: 100
   # Many (use `values:`)
   model_name: 
     values: ['resnet18', 'resnet34']
   binary:
     values: [True, False]
-  balanced:
-    values: [True, False]
-  num_epochs:
-    value: 100
-  batch_size:
-    value: 128 
   learning_rate:
     values: [0.0001,  0.001,  0.01,  0.1]
   weight_decay:
