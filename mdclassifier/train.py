@@ -553,18 +553,20 @@ def main(cfg):
     y_eval = dat_val[id_col]
     y_test = dat_test[id_col]
 
+    if is_bin:
+        number_of_categories = 1
+    else:
+        number_of_categories = len(dat_labs_lookup)
+
+    print(f"{number_of_categories=}")  
+
     if is_bal:
         weights_train = torch.tensor(
             list(1/(y_train.value_counts()/max(y_train.value_counts())))
         ).to(device)
     else:
-        weights_train = torch.ones(size=len(number_of_categories))
+        weights_train = torch.ones(size=[2])    
     print(f"{weights_train=}")
-
-    if is_bin:
-        number_of_categories = 1
-    else:
-        number_of_categories = len(dat_labs_lookup)
 
     # Make run_name
     model_name = cfg["model_name"]
