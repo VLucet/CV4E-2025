@@ -15,8 +15,12 @@ class CustomResnet(nn.Module):
             self.feature_extractor = models.resnet18(
                 weights="DEFAULT"
             )  # use weights pre-trained on ImageNet
+        elif cfg["model_name"] == "resnet34":
+            self.feature_extractor = models.resnet34(
+                weights="DEFAULT"
+            )  # use weights pre-trained on ImageNet
         else:
-            raise "Resnet type not found"
+            raise ValueError("Resnet type not found")
 
         # replace the very last layer from the original, 1000-class output
         # ImageNet to a new one that outputs num_classes
