@@ -1,10 +1,19 @@
+# vscode
 .vscode/
+
+# folders
 assignments/
 __pycache__/
-*.pyc
-*.pyo
-.env
 wandb/
 runs/
-.Rproj.user
 models/
+
+# py files
+*.pyc
+*.pyo
+
+# env files
+*.env
+*.Rproj.user
+*.yaml
+*.cyberduckprofile
