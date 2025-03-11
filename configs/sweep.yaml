@@ -13,9 +13,7 @@ parameters:
   train_val_split: 
     value: 0.3
   data_frac: 
-    value: 0.3
-  seed: 
-    value: 32678456782 # random number generator seed (long integer value) # 10366395667 46303749199, 13757672088, 57650004417
+    value: 1
   device: 
     value: 'cuda' # if you have multiple GPU's, you can use 'cude:4' to specify which GPU to run on, e.g., the 4th
   num_workers: 
@@ -29,6 +27,8 @@ parameters:
   num_epochs:
     value: 100
   # Many (use `values:`)
+  seed: 
+    values: [32678456782, 10366395667, 46303749199, 13757672088, 57650004417] # random number generator seed (long integer value) # 10366395667, 46303749199, 13757672088, 57650004417
   model_name: 
     values: ['resnet18', 'resnet34']
   binary:
